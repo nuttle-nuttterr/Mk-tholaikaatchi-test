@@ -1,5 +1,5 @@
-mitthu786/tvepg/epg.xml.gz:e515a7502792926358ed94a68087d9c2aa17cfdb
-mitthu786/tvepg/jiotv/epg.xml.gz:a26c3643e54d7d3dbfa0b7dfb696da08ac28db7d
-mitthu786/tvepg/tataplay/epg.xml.gz:388d800ad7ed1732ef5ce751a6ce7fee99cc0718
+mitthu786/tvepg/epg.xml.gz:229fbb2eed8e7c69258667235c846d78d79a3a85
+mitthu786/tvepg/jiotv/epg.xml.gz:84b892ea57fb8dd6727904e5a66856cc11be455a
+mitthu786/tvepg/tataplay/epg.xml.gz:7f1327cf279142247fe95b21052a2703f2f8e1b2
 amazeyourself/m3u/epg/airtel.xml:d6c1136d0c1835ac950a09c33172dc3fade8b32a
 amazeyourself/m3u/epg/airtel.xml.gz:fdd67cfe5c87497f3f79d635c64e0cff9b8465a9
