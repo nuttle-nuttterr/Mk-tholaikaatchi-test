@@ -18,6 +18,7 @@ jobs:
       - name: Build Playlist from Scratch
         run: |
           echo "#EXTM3U" > direct_sources.m3u
+          echo "#EXTM3U" > vmfm_local.m3u
           echo '<?xml version="1.0" encoding="UTF-8"?>' > master_epg.xml
           echo '<tv generator-info-name="GitHub Actions Auto-Sync">' >> master_epg.xml
           
@@ -35,6 +36,249 @@ jobs:
             
             API_URL="https://api.github.com/repos/$OWNER/$REPO/contents/$FILE_PATH"
             RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" "$API_URL")
+            
+            if ! echo "$RESPONSE" | jq empty 2>/dev/null; then
+              echo "⚠️ Invalid API response for $line. Skipping..."
+              continue
+            fi
+            
+            DOWNLOAD_URL=$(echo "$RESPONSE" | jq -r '.download_url // "none"' 2>/dev/null || echo "none")
+            
+            if [ "$DOWNLOAD_URL" = "none" ] || [ -z "$DOWNLOAD_URL" ]; then
+              echo "⚠️ Could not get download URL for $line. Skipping..."
+              continue
+            fi
+            
+            echo "⬇️ Downloading $line..."
+            curl -s -L "$DOWNLOAD_URL" > temp_file.txt
+            
+            IS_EPG=false
+            if [[ "$FILE_PATH" == *.xml ]] || [[ "$FILE_PATH" == *.xml.gz ]]; then
+              IS_EPG=true
+            fi
+            
+            if [ "$IS_EPG" = true ]; then
+              if [[ "$FILE_PATH" == *.gz ]]; then
+                if file temp_file.txt | grep -q "gzip compressed"; then
+                  gunzip -c temp_file.txt > temp_epg.xml || continue
+                else
+                  mv temp_file.txt temp_epg.xml
+                fi
+              else
+                mv temp_file.txt temp_epg.xml
+              fi
+              sed -n '/<tv/,/<\/tv>/p' temp_epg.xml | sed '/<?xml/d' | sed '1d;$d' >> master_epg.xml
+            elif [[ "$FILE_PATH" == *.json ]]; then
+              printf '%s\n' \
+                'def process_item:' \
+                '  "#EXTINF:-1 tvg-logo=\"" + (.logo // .icon // .stream_icon // "") + "\" group-title=\"" + (.group // .category // .category_name // "Uncategorized") + "\"," + (.name // .title // .channel_name // "Unknown") + "\n" + (.url // .stream // .link // .channel_url // "");' \
+                'def get_items:' \
+                '  if type == "array" then .' \
+                '  elif .streams then .streams' \
+                '  elif .channels then .channels' \
+                '  elif .data then .data' \
+                '  elif .items then .items' \
+                '  else [] end;' \
+                'get_items | .[] | process_item' > script.jq
+              jq -r -f script.jq temp_file.txt | sed '/^#EXTM3U/d' | tr -d '\r' >> direct_sources.m3u || true
+            else
+              # SPECIAL HANDLING: Vmfm channels go to vmfm_local.m3u
+              if [[ "$line" == Vmfm/* ]]; then
+                echo "🏷️ Processing Vmfm as local channels..."
+                # Force all Vmfm channels to have group-title="local channels"
+                awk '
+                /^#EXTINF:/ {
+                    # Extract the channel name (after the comma)
+                    match($0, /,([^,]+)$/, arr)
+                    channel_name = arr[1]
+                    # Extract tvg-name if exists
+                    match($0, /tvg-name="([^"]+)"/, tvg_arr)
+                    tvg_name = tvg_arr[1]
+                    if (tvg_name == "") tvg_name = channel_name
+                    # Output with forced "local channels" group
+                    print "#EXTINF:-1 group-title=\"local channels\" tvg-name=\"" tvg_name "\"," channel_name
+                    next
+                }
+                { print }
+                ' temp_file.txt | sed '/^#EXTM3U/d' | tr -d '\r' >> vmfm_local.m3u
+              else
+                sed '/^#EXTM3U/d' temp_file.txt | tr -d '\r' >> direct_sources.m3u
+              fi
+            fi
+            sleep 1
+          done < sources.txt
+          
+          echo '</tv>' >> master_epg.xml
+          
+          echo "📺 Downloading global Tamil/English playlists..."
+          curl -s -L "https://iptv-org.github.io/iptv/languages/tam.m3u" | tr -d '\r' > global_tam.m3u || true
+          curl -s -L "https://iptv-org.github.io/iptv/languages/eng.m3u" | tr -d '\r' > global_eng.m3u || true
+          cat global_tam.m3u global_eng.m3u > global_all.m3u
+          
+          echo "🧹 Applying STRICT filter - BLOCKING unwanted languages..."
+          awk '
+          BEGIN { extinf = ""; tags = ""; keep = 0 }
+          /^#EXTINF:/ {
+              extinf = $0
+              tags = ""
+              lower_line = tolower($0)
+              
+              # BLOCKLIST: Remove these languages/categories
+              if (lower_line ~ /hindi|telugu|malayalam|kannada|punjabi|urdu|bengali|marathi|gujarati|odia|assamese|rajasthani|bhojpuri|tulu|konkani|manipuri|nepali|sinhala|arabic|french|spanish|german|italian|portuguese|russian|chinese|japanese|korean|thai|vietnamese|indonesian|filipino|turkish|persian|hebrew|polish|dutch|swedish|norwegian|danish|finnish|greek|czech|hungarian|romanian|bulgarian|serbian|croatian|slovak|slovenian|lithuanian|latvian|estonian|ukrainian|belarusian|albanian|macedonian|bosnian|montenegrin|icelandic|irish|welsh|scots|gaelic|basque|catalan|galician|corsican|sardinian|sicilian|neapolitan|venetian|ligurian|emilian|romagnol|piemontese|lombard|friulian|ladin|romansh|occitan|provencal|arpitan|francoprovençal|walloon|picard|norman|breton|poitevin|saintongeais|angevin|tourangeau|orléanais|blésois|vendéen|charentais|aunis|perche|maine|normandie|bretagne|alsace|lorraine|franche-comté|bourgogne|lyonnais|dauphiné|provence|languedoc|roussillon|gascogne|béarn|bigorre|armagnac|comminges|couserans|nebouzan|quatre-vallées|barousse|aussat|astarac|rivière-verdun|gimone|arrats|save|gesse|loure|gimone|arrats|save|gesse/) {
+                  keep = 0
+              } else {
+                  keep = 1
+              }
+              next
+          }
+          /^#/ {
+              if (extinf != "" && keep == 1) {
+                  tags = tags $0 "\n"
+              }
+              next
+          }
+          {
+              line = $0
+              gsub(/^[ \t\r]+/, "", line)
+              gsub(/[ \t\r]+$/, "", line)
+              
+              if (line == "") next
+              
+              if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
+                  if (extinf != "" && keep == 1) {
+                      if (!seen[line]++) {
+                          print extinf
+                          if (tags != "") printf "%s", tags
+                          print line
+                      }
+                      extinf = ""
+                      tags = ""
+                      keep = 0
+                  }
+              } else {
+                  extinf = ""
+                  tags = ""
+                  keep = 0
+              }
+          }' global_all.m3u > filtered_global.m3u
+
+          echo "🧹 Cleaning direct sources..."
+          awk '
+          BEGIN { extinf = ""; tags = "" }
+          /^#EXTINF:/ {
+              if (match($0, /(https?|rtmp|udp|rtp):\/\/[^ \t]+/)) {
+                  url = substr($0, RSTART, RLENGTH)
+                  extinf = substr($0, 1, RSTART-1)
+                  gsub(/[ \t,]+$/, "", extinf)
+                  if (!seen[url]++) {
+                      print extinf
+                      print url
+                  }
+                  extinf = ""
+                  tags = ""
+              } else {
+                  extinf = $0
+                  tags = ""
+              }
+              next
+          }
+          /^#/ {
+              if (extinf != "") {
+                  tags = tags $0 "\n"
+              }
+              next
+          }
+          {
+              line = $0
+              gsub(/^[ \t\r]+/, "", line)
+              gsub(/[ \t\r]+$/, "", line)
+              
+              if (line == "") next
+              
+              if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
+                  if (extinf != "") {
+                      if (!seen[line]++) {
+                          print extinf
+                          if (tags != "") printf "%s", tags
+                          print line
+                      }
+                      extinf = ""
+                      tags = ""
+                  }
+              } else {
+                  extinf = ""
+                  tags = ""
+              }
+          }' direct_sources.m3u > cleaned_direct.m3u
+
+          echo "🧹 Combining all sources..."
+          echo "#EXTM3U" > master_playlist.m3u
+          cat vmfm_local.m3u cleaned_direct.m3u filtered_global.m3u >> master_playlist.m3u
+          
+          echo "🧹 Final deduplication..."
+          awk '
+          BEGIN { extinf = ""; tags = "" }
+          /^#EXTINF:/ {
+              if (match($0, /(https?|rtmp|udp|rtp):\/\/[^ \t]+/)) {
+                  url = substr($0, RSTART, RLENGTH)
+                  extinf = substr($0, 1, RSTART-1)
+                  gsub(/[ \t,]+$/, "", extinf)
+                  if (!seen[url]++) {
+                      print extinf
+                      print url
+                  }
+                  extinf = ""
+                  tags = ""
+              } else {
+                  extinf = $0
+                  tags = ""
+              }
+              next
+          }
+          /^#/ {
+              if (extinf != "") {
+                  tags = tags $0 "\n"
+              }
+              next
+          }
+          {
+              line = $0
+              gsub(/^[ \t\r]+/, "", line)
+              gsub(/[ \t\r]+$/, "", line)
+              
+              if (line == "") next
+              
+              if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
+                  if (extinf != "") {
+                      if (!seen[line]++) {
+                          print extinf
+                          if (tags != "") printf "%s", tags
+                          print line
+                      }
+                      extinf = ""
+                      tags = ""
+                  }
+              } else {
+                  extinf = ""
+                  tags = ""
+              }
+          }' master_playlist.m3u > final_master.m3u
+          
+          echo "#EXTM3U" > master_playlist.m3u
+          cat final_master.m3u >> master_playlist.m3u
+          
+          dos2unix master_playlist.m3u master_epg.xml 2>/dev/null || true
+          
+          echo "🎉 Total channels: $(grep -c '^#EXTINF:' master_playlist.m3u || echo 0)"
+          echo "🎉 Unique URLs: $(grep -E '^(https?|rtmp)' master_playlist.m3u | sort -u | wc -l || echo 0)"
+          echo "🎉 Local channels: $(grep -c 'group-title="local channels"' master_playlist.m3u || echo 0)"
+          
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          git add master_playlist.m3u master_epg.xml
+          git diff --staged --quiet || git commit -m "Auto-sync: Strict language filter + Vmfm as local"
+          git push --force || true            RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" "$API_URL")
             
             if ! echo "$RESPONSE" | jq empty 2>/dev/null; then
               echo "⚠️ Invalid API response for $line. Skipping..."
