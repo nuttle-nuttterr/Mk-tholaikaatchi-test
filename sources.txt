@@ -9,7 +9,6 @@ Vmfm/tamilvmtv/live/channels.m3u
 Vmfm/tamilvmtv/live/jio.m3u
 Tamilwebcast/Tamilwebcast.github.io/TWCIPTV.m3u
 PraveenBojja83/praveentv/resource/channels.json
-iptv-org/iptv/languages/tam.m3u
 Indiblog/india-iptv/output/india_iptv.m3u
 Indiblog/india-iptv/output/india_general.m3u
 Indiblog/india-iptv/output/channels.json
