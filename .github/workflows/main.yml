@@ -92,7 +92,6 @@ jobs:
                 extinf = $0
                 lower = tolower($0)
                 
-                # Determine category
                 if (lower ~ /tamil.*local|local.*tamil|galaxyott|sscloud|applelive|ipcloud|onecloudlive|bmlive|phoenixcreations|singamcloud|olidigital|tamilstream|rojatv|maxtn|notvstream|apserver|rcserver|brightmeltech|mindspell|7starcloud|livebox|yuppcdn|tangotv|dailyhunt|pishow|streamjo|massstream|tatatv|ranapk|ashokadigital/) {
                     category = "local"
                 }
@@ -118,12 +117,11 @@ jobs:
                     category = "sports"
                 }
                 else if (lower ~ /tamil/) {
-                    category = "tamil_movies"  # Default tamil to movies
+                    category = "tamil_movies"
                 }
                 else {
                     category = "skip"
                 }
-                
                 next
             }
             {
@@ -161,7 +159,6 @@ jobs:
           echo "📺 ADDING GLOBAL PLAYLISTS"
           echo "=========================================="
           
-          # Global Tamil
           curl -s "https://iptv-org.github.io/iptv/languages/tam.m3u" | awk '
           /^#EXTINF:/ {
               extinf = $0
@@ -188,7 +185,6 @@ jobs:
               }
           }'
           
-          # Global English (news/sports/movies only)
           curl -s "https://iptv-org.github.io/iptv/languages/eng.m3u" | awk '
           /^#EXTINF:/ {
               extinf = $0
@@ -218,15 +214,11 @@ jobs:
           echo "🧹 TESTING URLS (EXCEPT LOCAL)"
           echo "=========================================="
           
-          # Test all categories EXCEPT tamil_local
           for file in tamil_movies.tmp tamil_news.tmp tamil_music.tmp tamil_kids.tmp english_movies.tmp english_news.tmp sports.tmp; do
             if [ -f "$file" ] && [ -s "$file" ]; then
-              echo "🔍 Testing $file..."
+              echo " Testing $file..."
               awk '
-              /^#EXTINF:/ {
-                  extinf = $0
-                  next
-              }
+              /^#EXTINF:/ { extinf = $0; next }
               {
                   line = $0
                   gsub(/^[ \t\r]+/, "", line)
@@ -250,27 +242,31 @@ jobs:
           
           echo '#EXTM3U' > master_playlist.m3u
           
-          # Add categories in order
-          for category in "Tamil Local Channels" tamil_local.tmp "Tamil Movies" tamil_movies.tmp "Tamil News" tamil_news.tmp "Tamil Music" tamil_music.tmp "Tamil Kids" tamil_kids.tmp "English Movies" english_movies.tmp "English News" english_news.tmp "Sports" sports.tmp; do
-            if [[ "$category" == *.tmp ]]; then
-              if [ -f "$category" ] && [ -s "$category" ]; then
-                count=$(grep -c '^#EXTINF:' "$category" 2>/dev/null || echo 0)
-                echo "" >> master_playlist.m3u
-                echo "# $PREV_NAME" >> master_playlist.m3u
-                cat "$category" >> master_playlist.m3u
-                echo "✅ Added $count channels to $PREV_NAME"
-              fi
-            else
-              PREV_NAME="$category"
+          # Simple function to add categories safely
+          add_category() {
+            local name="$1"
+            local file="$2"
+            if [ -f "$file" ] && [ -s "$file" ]; then
+              count=$(grep -c '^#EXTINF:' "$file" 2>/dev/null || echo 0)
+              echo "" >> master_playlist.m3u
+              echo "# $name" >> master_playlist.m3u
+              cat "$file" >> master_playlist.m3u
+              echo "✅ Added $count channels to $name"
             fi
-          done
+          }
+          
+          add_category "Tamil Local Channels" tamil_local.tmp
+          add_category "Tamil Movies" tamil_movies.tmp
+          add_category "Tamil News" tamil_news.tmp
+          add_category "Tamil Music" tamil_music.tmp
+          add_category "Tamil Kids" tamil_kids.tmp
+          add_category "English Movies" english_movies.tmp
+          add_category "English News" english_news.tmp
+          add_category "Sports" sports.tmp
           
           # Final deduplication
           awk '
-          /^#EXTINF:/ {
-              extinf = $0
-              next
-          }
+          /^#EXTINF:/ { extinf = $0; next }
           {
               line = $0
               gsub(/^[ \t\r]+/, "", line)
@@ -297,9 +293,6 @@ jobs:
           echo "=========================================="
           TOTAL=$(grep -c '^#EXTINF:' master_playlist.m3u)
           echo "🎉 TOTAL CHANNELS: $TOTAL"
-          echo ""
-          echo "📁 Categories:"
-          grep '^#' master_playlist.m3u | grep -v '^#EXTM3U'
           
           echo ""
           echo "=========================================="
@@ -310,198 +303,4 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add master_playlist.m3u master_epg.xml
           git diff --staged --quiet || git commit -m "Final: Categorized Tamil/English with working local channels"
-          git push --force || true            
-            # Create category name from source
-            CATEGORY_NAME="${OWNER}-${REPO}"
-            echo "📁 Category: $CATEGORY_NAME"
-            
-            API_URL="https://api.github.com/repos/$OWNER/$REPO/contents/$FILE_PATH"
-            RESPONSE=$(curl -s "$API_URL")
-            
-            if ! echo "$RESPONSE" | jq empty 2>/dev/null; then
-              echo "⚠️ Invalid response"
-              continue
-            fi
-            
-            DOWNLOAD_URL=$(echo "$RESPONSE" | jq -r '.download_url // "none"')
-            [[ "$DOWNLOAD_URL" == "none" ]] && continue
-            
-            curl -s -L "$DOWNLOAD_URL" > temp_file.txt
-            
-            # Handle EPG
-            if [[ "$FILE_PATH" == *.xml ]] || [[ "$FILE_PATH" == *.xml.gz ]]; then
-              if [[ "$FILE_PATH" == *.gz ]]; then
-                gunzip -c temp_file.txt > temp_epg.xml 2>/dev/null || mv temp_file.txt temp_epg.xml
-              else
-                mv temp_file.txt temp_epg.xml
-              fi
-              sed -n '/<tv/,/<\/tv>/p' temp_epg.xml | sed '/<?xml/d' | sed '1d;$d' >> master_epg.xml
-              echo "✅ EPG added"
-              continue
-            fi
-            
-            # Convert JSON
-            if [[ "$FILE_PATH" == *.json ]]; then
-              printf '%s\n' \
-                'def process_item:' \
-                '  "#EXTINF:-1 group-title=\"'"$CATEGORY_NAME"'\", " + (.name // "Unknown") + "\n" + (.url // "");' \
-                'def get_items:' \
-                '  if type == "array" then .' \
-                '  elif .streams then .streams' \
-                '  elif .channels then .channels' \
-                '  elif .data then .data' \
-                '  else [] end;' \
-                'get_items | .[] | process_item' > script.jq
-              jq -r -f script.jq temp_file.txt > converted.m3u
-            else
-              sed "s/group-title=\"[^\"]*\"/group-title=\"$CATEGORY_NAME\"/g" temp_file.txt > converted.m3u
-            fi
-            
-            # Filter only Tamil/English and count
-            BEFORE=$(grep -c '^#EXTINF:' converted.m3u 2>/dev/null || echo 0)
-            
-            awk '
-            /^#EXTINF:/ {
-                extinf = $0
-                lower = tolower($0)
-                if (lower ~ /tamil|english/) {
-                    keep = 1
-                } else {
-                    keep = 0
-                }
-                next
-            }
-            {
-                line = $0
-                gsub(/^[ \t\r]+/, "", line)
-                if (line == "") next
-                if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                    if (extinf != "" && keep == 1) {
-                        print extinf
-                        print line
-                        extinf = ""
-                        keep = 0
-                    }
-                }
-            }' converted.m3u >> master_playlist.m3u
-            
-            AFTER=$(grep -c '^#EXTINF:' master_playlist.m3u 2>/dev/null || echo 0)
-            ADDED=$((AFTER - TOTAL))
-            TOTAL=$AFTER
-            
-            echo "✅ Added $ADDED channels (Total: $TOTAL)"
-            
-            sleep 1
-          done < sources.txt
-          
-          echo '</tv>' >> master_epg.xml
-          
-          echo ""
-          echo "=========================================="
-          echo "📺 DOWNLOADING GLOBAL PLAYLISTS"
-          echo "=========================================="
-          
-          # Add global Tamil
-          echo "📺 Adding global Tamil..."
-          curl -s "https://iptv-org.github.io/iptv/languages/tam.m3u" | awk '
-          /^#EXTINF:/ {
-              extinf = $0
-              gsub(/group-title="[^"]*"/, "group-title=\"Global-Tamil\"", extinf)
-              next
-          }
-          {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              if (line == "") next
-              if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                  if (extinf != "") {
-                      print extinf
-                      print line
-                      extinf = ""
-                  }
-              }
-          }' >> master_playlist.m3u
-          
-          # Add global English (only news/sports/movies)
-          echo "📺 Adding global English (news/sports/movies)..."
-          curl -s "https://iptv-org.github.io/iptv/languages/eng.m3u" | awk '
-          /^#EXTINF:/ {
-              extinf = $0
-              lower = tolower($0)
-              if (lower ~ /news|sport|movie|cinema|film/) {
-                  keep = 1
-                  gsub(/group-title="[^"]*"/, "group-title=\"Global-English\"", extinf)
-              } else {
-                  keep = 0
-              }
-              next
-          }
-          {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              if (line == "") next
-              if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                  if (extinf != "" && keep == 1) {
-                      print extinf
-                      print line
-                      extinf = ""
-                      keep = 0
-                  }
-              }
-          }' >> master_playlist.m3u
-          
-          echo ""
-          echo "=========================================="
-          echo "🧹 DEDUPLICATING & CLEANING"
-          echo "=========================================="
-          
-          BEFORE_DEDUP=$(grep -c '^#EXTINF:' master_playlist.m3u)
-          
-          awk '
-          /^#EXTINF:/ {
-              extinf = $0
-              next
-          }
-          {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              if (line == "") next
-              if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                  if (extinf != "") {
-                      if (!seen[line]++) {
-                          print extinf
-                          print line
-                      }
-                      extinf = ""
-                  }
-              }
-          }' master_playlist.m3u > clean_playlist.m3u
-          
-          echo '#EXTM3U' > master_playlist.m3u
-          cat clean_playlist.m3u >> master_playlist.m3u
-          
-          AFTER_DEDUP=$(grep -c '^#EXTINF:' master_playlist.m3u)
-          REMOVED=$((BEFORE_DEDUP - AFTER_DEDUP))
-          
-          dos2unix master_playlist.m3u master_epg.xml 2>/dev/null || true
-          
-          echo ""
-          echo "=========================================="
-          echo "📊 FINAL STATISTICS"
-          echo "=========================================="
-          echo "🎉 Total channels: $AFTER_DEDUP"
-          echo "🗑️ Duplicates removed: $REMOVED"
-          echo ""
-          echo "📁 Categories:"
-          grep '^#EXTINF:' master_playlist.m3u | grep -o 'group-title="[^"]*"' | sort | uniq -c | sort -rn
-          
-          echo ""
-          echo "=========================================="
-          echo "✅ BUILD COMPLETE"
-          echo "=========================================="
-          
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add master_playlist.m3u master_epg.xml
-          git diff --staged --quiet || git commit -m "Auto-sync: Categories by source name"
           git push --force || true
