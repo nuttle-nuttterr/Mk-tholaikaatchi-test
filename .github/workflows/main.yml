@@ -1,10 +1,8 @@
-name: Update Tamil & English IPTV Playlist
+name: Update IPTV Playlist
 
 on:
   schedule:
     - cron: '0 */3 * * *'
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -15,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -25,16 +23,20 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Create Python script
-        run: |
-          cat > run.py << 'PYEOF'
-          import requests, re, time
-          from collections import OrderedDict
+      - name: Run playlist generator
+        run: python run.py
 
-          OUTPUT_FILE = "master_playlist.m3u"
-          CATEGORIES = [
-              "Tamil Local", "Tamil Entertainment", "Tamil News", "Tamil Movies", 
-              "Tamil Music", "Tamil Kids", "Tamil Devotional", "Tamil Infotainment",
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add master_playlist.m3u README.md
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Auto-update playlist"
+            git push
+          fi              "Tamil Music", "Tamil Kids", "Tamil Devotional", "Tamil Infotainment",
               "English Entertainment", "English News", "English Movies", 
               "English Kids", "English Infotainment", "Sports"
           ]
