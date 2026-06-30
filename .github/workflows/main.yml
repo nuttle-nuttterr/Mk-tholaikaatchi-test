@@ -93,75 +93,158 @@ jobs:
           curl -s -L "https://iptv-org.github.io/iptv/languages/eng.m3u" | tr -d '\r' > global_eng.m3u || true
           cat global_tam.m3u global_eng.m3u > global_all.m3u
           
-          echo "🧹 Filtering global playlists..."
+          echo "🧹 Applying STRICT Tamil/English filter and deduplication..."
           awk '
           BEGIN { extinf = ""; tags = ""; keep = 0 }
           /^#EXTINF:/ {
-              extinf = $0; tags = ""; lower_line = tolower($0)
-              if (lower_line ~ /tamil|english|kids|cartoon|movie|series/) { keep = 1 } else { keep = 0 }
+              extinf = $0
+              tags = ""
+              lower_line = tolower($0)
+              
+              # STRICT FILTER: Only keep Tamil, English, Local, Indian, Kids
+              if (lower_line ~ /tamil|english|local|indian|kids|cartoon/) {
+                  keep = 1
+              } else if (lower_line ~ /sun tv|sun music|sun news|sun life|vijay|zee tamil|zee thirai|jaya|ktv|raj tv|raj news|raj digital|raj musix|polimer|thanthi|kalaignar|captain|sathya|vasanth|chutti|podhigai|makkal|puthiya|puthuyugam|isaiaruvi|madhimugam|vendhar|adithya|sirippoli|win news|news j|news7|news18|eet|ibc|murasu|subin|sana|galaxyott|applelive|sscloud|ipcloud|onecloudlive|bmlive|phoenixcreations|singamcloud|olidigital|tamilstream|rojatv|maxtn|notvstream|apserver|rcserver|brightmeltech|mindspell|7starcloud|livebox|yuppcdn|tangotv|dailyhunt|pishow|streamjo|massstream|tatatv|ranapk/) {
+                  keep = 1
+              } else {
+                  keep = 0
+              }
               next
           }
-          /^#/ { if (extinf != "" && keep == 1) { tags = tags $0 "\n" }; next }
+          /^#/ {
+              if (extinf != "" && keep == 1) {
+                  tags = tags $0 "\n"
+              }
+              next
+          }
           {
-              line = $0; gsub(/^[ \t\r]+/, "", line); gsub(/[ \t\r]+$/, "", line)
-              if (line == "") next;
+              line = $0
+              gsub(/^[ \t\r]+/, "", line)
+              gsub(/[ \t\r]+$/, "", line)
+              
+              if (line == "") next
+              
               if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
                   if (extinf != "" && keep == 1) {
-                      if (!seen[line]++) { print extinf; if (tags != "") printf "%s", tags; print line }
-                      extinf = ""; tags = ""; keep = 0
+                      # DEDUPLICATION: Only keep if URL not seen before
+                      if (!seen[line]++) {
+                          print extinf
+                          if (tags != "") printf "%s", tags
+                          print line
+                      }
+                      extinf = ""
+                      tags = ""
+                      keep = 0
                   }
-              } else { extinf = ""; tags = ""; keep = 0 }
+              } else {
+                  extinf = ""
+                  tags = ""
+                  keep = 0
+              }
           }' global_all.m3u > filtered_global.m3u
 
-          echo "🧹 Cleaning direct sources..."
+          echo "🧹 Cleaning direct sources (keeping ALL including Local & Adult)..."
           awk '
           BEGIN { extinf = ""; tags = "" }
           /^#EXTINF:/ {
               if (match($0, /(https?|rtmp|udp|rtp):\/\/[^ \t]+/)) {
-                  url = substr($0, RSTART, RLENGTH); extinf = substr($0, 1, RSTART-1)
+                  url = substr($0, RSTART, RLENGTH)
+                  extinf = substr($0, 1, RSTART-1)
                   gsub(/[ \t,]+$/, "", extinf)
-                  if (!seen[url]++) { print extinf; print url }
-                  extinf = ""; tags = ""
-              } else { extinf = $0; tags = "" }
+                  # DEDUPLICATION
+                  if (!seen[url]++) {
+                      print extinf
+                      print url
+                  }
+                  extinf = ""
+                  tags = ""
+              } else {
+                  extinf = $0
+                  tags = ""
+              }
               next
           }
-          /^#/ { if (extinf != "") { tags = tags $0 "\n" }; next }
+          /^#/ {
+              if (extinf != "") {
+                  tags = tags $0 "\n"
+              }
+              next
+          }
           {
-              line = $0; gsub(/^[ \t\r]+/, "", line); gsub(/[ \t\r]+$/, "", line)
-              if (line == "") next;
+              line = $0
+              gsub(/^[ \t\r]+/, "", line)
+              gsub(/[ \t\r]+$/, "", line)
+              
+              if (line == "") next
+              
               if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
                   if (extinf != "") {
-                      if (!seen[line]++) { print extinf; if (tags != "") printf "%s", tags; print line }
-                      extinf = ""; tags = ""
+                      # DEDUPLICATION
+                      if (!seen[line]++) {
+                          print extinf
+                          if (tags != "") printf "%s", tags
+                          print line
+                      }
+                      extinf = ""
+                      tags = ""
                   }
-              } else { extinf = ""; tags = "" }
+              } else {
+                  extinf = ""
+                  tags = ""
+              }
           }' direct_sources.m3u > cleaned_direct.m3u
 
           echo "🧹 Combining and final deduplication..."
           echo "#EXTM3U" > master_playlist.m3u
           cat cleaned_direct.m3u filtered_global.m3u >> master_playlist.m3u
           
+          # FINAL DEDUPLICATION PASS
           awk '
           BEGIN { extinf = ""; tags = "" }
           /^#EXTINF:/ {
               if (match($0, /(https?|rtmp|udp|rtp):\/\/[^ \t]+/)) {
-                  url = substr($0, RSTART, RLENGTH); extinf = substr($0, 1, RSTART-1)
+                  url = substr($0, RSTART, RLENGTH)
+                  extinf = substr($0, 1, RSTART-1)
                   gsub(/[ \t,]+$/, "", extinf)
-                  if (!seen[url]++) { print extinf; print url }
-                  extinf = ""; tags = ""
-              } else { extinf = $0; tags = "" }
+                  if (!seen[url]++) {
+                      print extinf
+                      print url
+                  }
+                  extinf = ""
+                  tags = ""
+              } else {
+                  extinf = $0
+                  tags = ""
+              }
               next
           }
-          /^#/ { if (extinf != "") { tags = tags $0 "\n" }; next }
+          /^#/ {
+              if (extinf != "") {
+                  tags = tags $0 "\n"
+              }
+              next
+          }
           {
-              line = $0; gsub(/^[ \t\r]+/, "", line); gsub(/[ \t\r]+$/, "", line)
-              if (line == "") next;
+              line = $0
+              gsub(/^[ \t\r]+/, "", line)
+              gsub(/[ \t\r]+$/, "", line)
+              
+              if (line == "") next
+              
               if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
                   if (extinf != "") {
-                      if (!seen[line]++) { print extinf; if (tags != "") printf "%s", tags; print line }
-                      extinf = ""; tags = ""
+                      if (!seen[line]++) {
+                          print extinf
+                          if (tags != "") printf "%s", tags
+                          print line
+                      }
+                      extinf = ""
+                      tags = ""
                   }
-              } else { extinf = ""; tags = "" }
+              } else {
+                  extinf = ""
+                  tags = ""
+              }
           }' master_playlist.m3u > final_master.m3u
           
           echo "#EXTM3U" > master_playlist.m3u
@@ -170,12 +253,11 @@ jobs:
           dos2unix master_playlist.m3u master_epg.xml 2>/dev/null || true
           
           echo "🎉 Total channels generated: $(grep -c '^#EXTINF:' master_playlist.m3u || echo 0)"
+          echo "🎉 Unique URLs: $(grep -E '^(https?|rtmp)' master_playlist.m3u | sort -u | wc -l || echo 0)"
           
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
           git add master_playlist.m3u master_epg.xml
-          git diff --staged --quiet || git commit -m "Auto-sync: Rebuilt M3U and EPG from scratch"
-          
-          # FIX: Force push to overwrite remote and prevent "rejected" errors
+          git diff --staged --quiet || git commit -m "Auto-sync: Strict Tamil/English filter + Deduplication"
           git push --force || true
