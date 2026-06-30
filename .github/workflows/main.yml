@@ -132,6 +132,181 @@ jobs:
           fi
           
           # ==========================================
+          # 🧹 THE ULTIMATE M3U PARSER (Janitor + Dedupe)
+          # ==========================================
+          echo "🧹 Cleaning and Deduplicating M3U..."
+          awk '
+          BEGIN { extinf = ""; tags = "" }
+          /^#EXTINF:/ {
+              # Check if URL is on the same line (handles malformed M3U files)
+              if (match($0, /(https?|rtmp|udp|rtp):\/\/[^ \t]+/)) {
+                  url = substr($0, RSTART, RLENGTH)
+                  extinf = substr($0, 1, RSTART-1)
+                  gsub(/[ \t,]+$/, "", extinf)
+                  if (!seen[url]++) {
+                      print extinf
+                      print url
+                  }
+                  extinf = ""
+                  tags = ""
+              } else {
+                  extinf = $0
+                  tags = ""
+              }
+              next
+          }
+          /^#/ {
+              # It is a player tag (like #EXTVLCOPT, #KODIPROP, etc.)
+              if (extinf != "") {
+                  tags = tags $0 "\n"
+              }
+              next
+          }
+          {
+              line = $0
+              gsub(/^[ \t\r]+/, "", line)
+              gsub(/[ \t\r]+$/, "", line)
+              
+              if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
+                  if (extinf != "") {
+                      if (!seen[line]++) {
+                          print extinf
+                          if (tags != "") printf "%s", tags
+                          print line
+                      }
+                      extinf = ""
+                      tags = ""
+                  }
+              } else {
+                  # Garbage line (blank, commented out, etc.) - Discard current channel
+                  extinf = ""
+                  tags = ""
+              }
+          }
+          ' master_playlist.m3u > cleaned_playlist.m3u
+          
+          echo "#EXTM3U" > master_playlist.m3u
+          cat cleaned_playlist.m3u >> master_playlist.m3u
+          
+          if [ "$CHANGED" = true ]; then
+            mv new_shas.txt last_shas.txt
+          fi
+          if [ "$EPG_CHANGED" = true ]; then
+            mv new_epg_shas.txt last_epg_shas.txt
+          fi
+          
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          if [ "$CHANGED" = true ] && [ "$EPG_CHANGED" = true ]; then
+            git add master_playlist.m3u master_epg.xml last_shas.txt last_epg_shas.txt
+            git diff --staged --quiet || git commit -m "Auto-sync: Cleaned, Deduped, Updated M3U and EPG"
+          elif [ "$CHANGED" = true ]; then
+            git add master_playlist.m3u last_shas.txt
+            git diff --staged --quiet || git commit -m "Auto-sync: Cleaned, Deduped, Updated M3U only"
+          elif [ "$EPG_CHANGED" = true ]; then
+            git add master_epg.xml last_epg_shas.txt
+            git diff --staged --quiet || git commit -m "Auto-sync: Updated EPG only"
+          fi
+          
+          git push            RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" "$API_URL")
+            
+            FILE_SHA=$(echo "$RESPONSE" | jq -r '.sha // "none"' 2>/dev/null || echo "none")
+            HTML_URL=$(echo "$RESPONSE" | jq -r '.html_url // "none"' 2>/dev/null || echo "none")
+            
+            if [ "$FILE_SHA" = "none" ] || [ -z "$FILE_SHA" ]; then
+              echo "⚠️ Warning: Could not fetch $line. Skipping..."
+              continue
+            fi
+            
+            BRANCH=$(echo "$HTML_URL" | awk -F'/blob/' '{print $2}' | awk -F'/' '{print $1}')
+            RAW_URL="https://raw.githubusercontent.com/$OWNER/$REPO/$BRANCH/$FILE_PATH"
+            
+            IS_EPG=false
+            if [[ "$FILE_PATH" == *.xml ]] || [[ "$FILE_PATH" == *.xml.gz ]]; then
+              IS_EPG=true
+            fi
+            
+            if [ "$IS_EPG" = true ]; then
+              if [ -f last_epg_shas.txt ]; then
+                OLD_SHA=$(awk -v key="$line" -F: '$1 == key {print $2}' last_epg_shas.txt)
+              else
+                OLD_SHA=""
+              fi
+            else
+              if [ -f last_shas.txt ]; then
+                OLD_SHA=$(awk -v key="$line" -F: '$1 == key {print $2}' last_shas.txt)
+              else
+                OLD_SHA=""
+              fi
+            fi
+            
+            if [ "$IS_EPG" = true ]; then
+              echo "${line}:${FILE_SHA}" >> new_epg_shas.txt
+            else
+              echo "${line}:${FILE_SHA}" >> new_shas.txt
+            fi
+            
+            if [ "$FILE_SHA" != "$OLD_SHA" ]; then
+              echo "🚨 Update detected in $line! Downloading..."
+              curl -s -L "$RAW_URL" > temp_file.txt
+              
+              if [ "$IS_EPG" = true ]; then
+                EPG_CHANGED=true
+                echo "📺 Processing EPG file..."
+                if [[ "$FILE_PATH" == *.gz ]]; then
+                  echo "🗜️ Checking if file is a valid gzip archive..."
+                  if file temp_file.txt | grep -q "gzip compressed"; then
+                    echo "✅ Valid gzip found. Decompressing..."
+                    if ! gunzip -c temp_file.txt > temp_epg.xml; then
+                      echo "⚠️ Decompression failed. Skipping this file."
+                      continue
+                    fi
+                  else
+                    echo "⚠️ Warning: File is NOT a gzip archive. Trying as plain XML..."
+                    mv temp_file.txt temp_epg.xml
+                  fi
+                else
+                  mv temp_file.txt temp_epg.xml
+                fi
+                sed -n '/<tv/,/<\/tv>/p' temp_epg.xml | sed '/<?xml/d' | sed '1d;$d' >> master_epg.xml
+                
+              elif [[ "$FILE_PATH" == *.json ]]; then
+                CHANGED=true
+                echo "📋 Converting JSON to M3U..."
+                printf '%s\n' \
+                  'def process_item:' \
+                  '  "#EXTINF:-1 tvg-logo=\"" + (.logo // .icon // .stream_icon // "") + "\" group-title=\"" + (.group // .category // .category_name // "Uncategorized") + "\"," + (.name // .title // .channel_name // "Unknown") + "\n" + (.url // .stream // .link // .channel_url // "");' \
+                  'def get_items:' \
+                  '  if type == "array" then .' \
+                  '  elif .streams then .streams' \
+                  '  elif .channels then .channels' \
+                  '  elif .data then .data' \
+                  '  elif .items then .items' \
+                  '  else [] end;' \
+                  'get_items | .[] | process_item' > script.jq
+                
+                jq -r -f script.jq temp_file.txt | sed '/^#EXTM3U/d' >> master_playlist.m3u || true
+
+              else
+                CHANGED=true
+                echo "📺 Processing M3U/M3U8 file..."
+                sed '/^#EXTM3U/d' temp_file.txt >> master_playlist.m3u
+              fi
+            else
+              echo "✅ No change in $line"
+            fi
+            sleep 1
+          done < sources.txt
+          
+          echo '</tv>' >> master_epg.xml
+          
+          if [ "$CHANGED" = false ] && [ "$EPG_CHANGED" = false ]; then
+            echo "🛑 No changes detected. Exiting early."
+            exit 0
+          fi
+          
+          # ==========================================
           # 🧹 THE M3U JANITOR: Fix broken entries!
           # ==========================================
           echo "🧹 Cleaning up invalid M3U entries (missing URLs, commented URLs)..."
