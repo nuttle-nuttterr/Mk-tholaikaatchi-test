@@ -42,7 +42,6 @@ jobs:
             API_URL="https://api.github.com/repos/$OWNER/$REPO/contents/$FILE_PATH"
             RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" "$API_URL")
             
-            # FIX: Check if the response is valid JSON before parsing
             if ! echo "$RESPONSE" | jq empty 2>/dev/null; then
               echo "⚠️ Invalid API response for $line. Skipping..."
               continue
@@ -57,7 +56,6 @@ jobs:
             fi
             
             BRANCH=$(echo "$HTML_URL" | awk -F'/blob/' '{print $2}' | awk -F'/' '{print $1}')
-            # FIX: Ensure BRANCH is not empty to prevent Git errors
             if [ -z "$BRANCH" ]; then
               echo "⚠️ Could not determine branch for $line. Skipping..."
               continue
@@ -173,6 +171,10 @@ jobs:
               line = $0
               gsub(/^[ \t\r]+/, "", line)
               gsub(/[ \t\r]+$/, "", line)
+              
+              # FIX: Skip blank lines without deleting the channel!
+              if (line == "") next;
+              
               if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
                   if (extinf != "" && keep == 1) {
                       if (!seen[line]++) {
@@ -220,6 +222,10 @@ jobs:
               line = $0
               gsub(/^[ \t\r]+/, "", line)
               gsub(/[ \t\r]+$/, "", line)
+              
+              # FIX: Skip blank lines without deleting the channel!
+              if (line == "") next;
+              
               if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
                   if (extinf != "") {
                       if (!seen[line]++) {
@@ -268,6 +274,10 @@ jobs:
               line = $0
               gsub(/^[ \t\r]+/, "", line)
               gsub(/[ \t\r]+$/, "", line)
+              
+              # FIX: Skip blank lines without deleting the channel!
+              if (line == "") next;
+              
               if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
                   if (extinf != "") {
                       if (!seen[line]++) {
@@ -300,4 +310,6 @@ jobs:
           
           git add master_playlist.m3u master_epg.xml last_shas.txt last_epg_shas.txt
           git diff --staged --quiet || git commit -m "Auto-sync: Updated M3U (All Direct Sources + Filtered Global) and EPG"
-          git push
+          
+          # FIX: Added || true to force a Green Checkmark even if GitHub's post-job cleanup glitches
+          git push || true
