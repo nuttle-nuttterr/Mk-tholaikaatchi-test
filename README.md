@@ -1,26 +1,25 @@
 # 📺 Tamil & English IPTV
 
-**Updated:** 2026-06-30 13:58:03 UTC
+**Updated:** 2026-06-30 14:41:14 UTC
 
-**Total:** 1438
+**Total:** 1571
 
 | Category | Channels |
 | --- | --- |
-| Tamil Local | 1336 |
-| Tamil Entertainment | 17 |
-| Tamil News | 7 |
-| Tamil Movies | 9 |
-| Tamil Music | 7 |
+| Tamil Local | 1349 |
+| Tamil Entertainment | 22 |
+| Tamil News | 9 |
+| Tamil Movies | 13 |
+| Tamil Music | 9 |
 | Tamil Kids | 1 |
-| Tamil Devotional | 4 |
+| Tamil Devotional | 13 |
 | Tamil Infotainment | 0 |
-| Tamil Shopping | 0 |
-| English Entertainment | 9 |
-| English News | 14 |
-| English Movies | 5 |
-| English Kids | 2 |
-| English Infotainment | 6 |
-| Sports | 21 |
+| English Entertainment | 53 |
+| English News | 36 |
+| English Movies | 8 |
+| English Kids | 7 |
+| English Infotainment | 9 |
+| Sports | 42 |
 
 ## 📺 Playlist URL
 ```
