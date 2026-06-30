@@ -86,13 +86,14 @@ jobs:
               cp temp_file.txt converted.m3u
             fi
             
-            # Categorize channels
+            # Categorize channels - NOW CHECKING BOTH #EXTINF AND URL LINES
             awk '
             /^#EXTINF:/ {
                 extinf = $0
                 lower = tolower($0)
                 
-                if (lower ~ /tamil.*local|local.*tamil|galaxyott|sscloud|applelive|ipcloud|onecloudlive|bmlive|phoenixcreations|singamcloud|olidigital|tamilstream|rojatv|maxtn|notvstream|apserver|rcserver|brightmeltech|mindspell|7starcloud|livebox|yuppcdn|tangotv|dailyhunt|pishow|streamjo|massstream|tatatv|ranapk|ashokadigital/) {
+                # Initial category from #EXTINF line
+                if (lower ~ /tamil.*local|local.*tamil/) {
                     category = "local"
                 }
                 else if (lower ~ /tamil/ && lower ~ /movie|cinema|film|j movie|k tv|raj digital|zee thirai|jaya movie|premium|24x7/) {
@@ -120,7 +121,7 @@ jobs:
                     category = "tamil_movies"
                 }
                 else {
-                    category = "skip"
+                    category = "unknown"
                 }
                 next
             }
@@ -130,7 +131,14 @@ jobs:
                 if (line == "") next
                 
                 if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                    if (extinf != "" && category != "skip") {
+                    lower_line = tolower(line)
+                    
+                    # FIX: Also check URL line for provider domains
+                    if (lower_line ~ /galaxyott|sscloud|applelive|ipcloud|onecloudlive|bmlive|phoenixcreations|singamcloud|olidigital|tamilstream|rojatv|maxtn|notvstream|apserver|rcserver|brightmeltech|mindspell|7starcloud|livebox|yuppcdn|tangotv|dailyhunt|pishow|streamjo|massstream|tatatv|ranapk|ashokadigital|103\.140\.254|103\.87\.105|198\.144\.149/) {
+                        category = "local"
+                    }
+                    
+                    if (extinf != "" && category != "skip" && category != "unknown") {
                         if (category == "local") print extinf "\n" line > "tamil_local.tmp"
                         else if (category == "tamil_movies") print extinf "\n" line > "tamil_movies.tmp"
                         else if (category == "tamil_news") print extinf "\n" line > "tamil_news.tmp"
@@ -216,7 +224,7 @@ jobs:
           
           for file in tamil_movies.tmp tamil_news.tmp tamil_music.tmp tamil_kids.tmp english_movies.tmp english_news.tmp sports.tmp; do
             if [ -f "$file" ] && [ -s "$file" ]; then
-              echo " Testing $file..."
+              echo "🔍 Testing $file..."
               awk '
               /^#EXTINF:/ { extinf = $0; next }
               {
@@ -242,276 +250,6 @@ jobs:
           
           echo '#EXTM3U' > master_playlist.m3u
           
-          # Simple function to add categories safely
-          add_category() {
-            local name="$1"
-            local file="$2"
-            if [ -f "$file" ] && [ -s "$file" ]; then
-              count=$(grep -c '^#EXTINF:' "$file" 2>/dev/null || echo 0)
-              echo "" >> master_playlist.m3u
-              echo "# $name" >> master_playlist.m3u
-              cat "$file" >> master_playlist.m3u
-              echo "✅ Added $count channels to $name"
-            fi
-          }
-          
-          add_category "Tamil Local Channels" tamil_local.tmp
-          add_category "Tamil Movies" tamil_movies.tmp
-          add_category "Tamil News" tamil_news.tmp
-          add_category "Tamil Music" tamil_music.tmp
-          add_category "Tamil Kids" tamil_kids.tmp
-          add_category "English Movies" english_movies.tmp
-          add_category "English News" english_news.tmp
-          add_category "Sports" sports.tmp
-          
-          # Final deduplication
-          awk '
-          /^#EXTINF:/ { extinf = $0; next }
-          {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              if (line == "") next
-              if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                  if (extinf != "") {
-                      if (!seen[line]++) {
-                          print extinf
-                          print line
-                      }
-                      extinf = ""
-                  }
-              }
-          }' master_playlist.m3u > final.m3u
-          
-          echo '#EXTM3U' > master_playlist.m3u
-          cat final.m3u >> master_playlist.m3u
-          
-          dos2unix master_playlist.m3u master_epg.xml 2>/dev/null || true
-          
-          echo ""
-          echo "=========================================="
-          echo "📊 FINAL STATISTICS"
-          echo "=========================================="
-          TOTAL=$(grep -c '^#EXTINF:' master_playlist.m3u)
-          echo "🎉 TOTAL CHANNELS: $TOTAL"
-          
-          echo ""
-          echo "=========================================="
-          echo "✅ BUILD COMPLETE"
-          echo "=========================================="
-          
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add master_playlist.m3u master_epg.xml
-          git diff --staged --quiet || git commit -m "Final: Categorized Tamil/English with working local channels"
-          git push --force || true          while IFS= read -r line || [[ -n "$line" ]]; do
-            line=$(echo "$line" | tr -d '\r')
-            [[ -z "$line" ]] && continue
-            [[ "$line" == iptv-org/iptv/* ]] && continue
-            
-            echo ""
-            echo "📦 Processing: $line"
-            
-            OWNER=$(echo "$line" | cut -d'/' -f1)
-            REPO=$(echo "$line" | cut -d'/' -f2)
-            FILE_PATH=$(echo "$line" | cut -d'/' -f3-)
-            
-            API_URL="https://api.github.com/repos/$OWNER/$REPO/contents/$FILE_PATH"
-            RESPONSE=$(curl -s "$API_URL")
-            
-            if ! echo "$RESPONSE" | jq empty 2>/dev/null; then
-              continue
-            fi
-            
-            DOWNLOAD_URL=$(echo "$RESPONSE" | jq -r '.download_url // "none"')
-            [[ "$DOWNLOAD_URL" == "none" ]] && continue
-            
-            curl -s -L "$DOWNLOAD_URL" > temp_file.txt
-            
-            # Handle EPG
-            if [[ "$FILE_PATH" == *.xml ]] || [[ "$FILE_PATH" == *.xml.gz ]]; then
-              if [[ "$FILE_PATH" == *.gz ]]; then
-                gunzip -c temp_file.txt > temp_epg.xml 2>/dev/null || continue
-              else
-                mv temp_file.txt temp_epg.xml
-              fi
-              sed -n '/<tv/,/<\/tv>/p' temp_epg.xml | sed '/<?xml/d' | sed '1d;$d' >> master_epg.xml
-              continue
-            fi
-            
-            # Convert JSON
-            if [[ "$FILE_PATH" == *.json ]]; then
-              printf '%s\n' \
-                'def process_item:' \
-                '  "#EXTINF:-1, " + (.name // "Unknown") + "\n" + (.url // "");' \
-                'def get_items:' \
-                '  if type == "array" then .' \
-                '  elif .streams then .streams' \
-                '  elif .channels then .channels' \
-                '  elif .data then .data' \
-                '  else [] end;' \
-                'get_items | .[] | process_item' > script.jq
-              jq -r -f script.jq temp_file.txt > converted.m3u
-            else
-              cp temp_file.txt converted.m3u
-            fi
-            
-            # Categorize channels
-            awk '
-            /^#EXTINF:/ {
-                extinf = $0
-                lower = tolower($0)
-                
-                if (lower ~ /tamil.*local|local.*tamil|galaxyott|sscloud|applelive|ipcloud|onecloudlive|bmlive|phoenixcreations|singamcloud|olidigital|tamilstream|rojatv|maxtn|notvstream|apserver|rcserver|brightmeltech|mindspell|7starcloud|livebox|yuppcdn|tangotv|dailyhunt|pishow|streamjo|massstream|tatatv|ranapk|ashokadigital/) {
-                    category = "local"
-                }
-                else if (lower ~ /tamil/ && lower ~ /movie|cinema|film|j movie|k tv|raj digital|zee thirai|jaya movie|premium|24x7/) {
-                    category = "tamil_movies"
-                }
-                else if (lower ~ /tamil/ && lower ~ /news|thanthi|polimer news|raj news|kalaignar news|news j|news7|news18|win news|puthiya|sathiyam|madhimugam/) {
-                    category = "tamil_news"
-                }
-                else if (lower ~ /tamil/ && lower ~ /music|musix|isaiaruvi|sun music|raj musix|g music|jcv musix|jp music/) {
-                    category = "tamil_music"
-                }
-                else if (lower ~ /kids|chutti|cartoon|nick|pogo|sonic|discovery kids|chhota|motu|scooby|vir the robot/) {
-                    category = "tamil_kids"
-                }
-                else if (lower ~ /english/ && lower ~ /movie|cinema|film/) {
-                    category = "english_movies"
-                }
-                else if (lower ~ /english/ && lower ~ /news/) {
-                    category = "english_news"
-                }
-                else if (lower ~ /sport|cricket|football|tennis/) {
-                    category = "sports"
-                }
-                else if (lower ~ /tamil/) {
-                    category = "tamil_movies"
-                }
-                else {
-                    category = "skip"
-                }
-                next
-            }
-            {
-                line = $0
-                gsub(/^[ \t\r]+/, "", line)
-                if (line == "") next
-                
-                if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                    if (extinf != "" && category != "skip") {
-                        if (category == "local") print extinf "\n" line > "tamil_local.tmp"
-                        else if (category == "tamil_movies") print extinf "\n" line > "tamil_movies.tmp"
-                        else if (category == "tamil_news") print extinf "\n" line > "tamil_news.tmp"
-                        else if (category == "tamil_music") print extinf "\n" line > "tamil_music.tmp"
-                        else if (category == "tamil_kids") print extinf "\n" line > "tamil_kids.tmp"
-                        else if (category == "english_movies") print extinf "\n" line > "english_movies.tmp"
-                        else if (category == "english_news") print extinf "\n" line > "english_news.tmp"
-                        else if (category == "sports") print extinf "\n" line > "sports.tmp"
-                        extinf = ""
-                        category = ""
-                    }
-                } else {
-                    extinf = ""
-                    category = ""
-                }
-            }' converted.m3u
-            
-            echo "✅ Categorized"
-            sleep 1
-          done < sources.txt
-          
-          echo '</tv>' >> master_epg.xml
-          
-          echo ""
-          echo "=========================================="
-          echo "📺 ADDING GLOBAL PLAYLISTS"
-          echo "=========================================="
-          
-          curl -s "https://iptv-org.github.io/iptv/languages/tam.m3u" | awk '
-          /^#EXTINF:/ {
-              extinf = $0
-              lower = tolower($0)
-              if (lower ~ /movie|cinema|film/) category = "tamil_movies"
-              else if (lower ~ /news/) category = "tamil_news"
-              else if (lower ~ /music/) category = "tamil_music"
-              else if (lower ~ /kids|cartoon/) category = "tamil_kids"
-              else category = "tamil_movies"
-              next
-          }
-          {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              if (line == "") next
-              if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                  if (extinf != "") {
-                      if (category == "tamil_movies") print extinf "\n" line > "tamil_movies.tmp"
-                      else if (category == "tamil_news") print extinf "\n" line > "tamil_news.tmp"
-                      else if (category == "tamil_music") print extinf "\n" line > "tamil_music.tmp"
-                      else if (category == "tamil_kids") print extinf "\n" line > "tamil_kids.tmp"
-                      extinf = ""
-                  }
-              }
-          }'
-          
-          curl -s "https://iptv-org.github.io/iptv/languages/eng.m3u" | awk '
-          /^#EXTINF:/ {
-              extinf = $0
-              lower = tolower($0)
-              if (lower ~ /movie|cinema|film/) category = "english_movies"
-              else if (lower ~ /news/) category = "english_news"
-              else if (lower ~ /sport/) category = "sports"
-              else category = "skip"
-              next
-          }
-          {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              if (line == "") next
-              if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                  if (extinf != "" && category != "skip") {
-                      if (category == "english_movies") print extinf "\n" line > "english_movies.tmp"
-                      else if (category == "english_news") print extinf "\n" line > "english_news.tmp"
-                      else if (category == "sports") print extinf "\n" line > "sports.tmp"
-                      extinf = ""
-                  }
-              }
-          }'
-          
-          echo ""
-          echo "=========================================="
-          echo "🧹 TESTING URLS (EXCEPT LOCAL)"
-          echo "=========================================="
-          
-          for file in tamil_movies.tmp tamil_news.tmp tamil_music.tmp tamil_kids.tmp english_movies.tmp english_news.tmp sports.tmp; do
-            if [ -f "$file" ] && [ -s "$file" ]; then
-              echo " Testing $file..."
-              awk '
-              /^#EXTINF:/ { extinf = $0; next }
-              {
-                  line = $0
-                  gsub(/^[ \t\r]+/, "", line)
-                  if (line == "") next
-                  if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                      if (extinf != "") {
-                          print extinf
-                          print line
-                          extinf = ""
-                      }
-                  }
-              }' "$file" > "${file}.clean"
-              mv "${file}.clean" "$file"
-            fi
-          done
-          
-          echo ""
-          echo "=========================================="
-          echo "🧹 COMBINING & DEDUPLICATING"
-          echo "=========================================="
-          
-          echo '#EXTM3U' > master_playlist.m3u
-          
-          # Simple function to add categories safely
           add_category() {
             local name="$1"
             local file="$2"
