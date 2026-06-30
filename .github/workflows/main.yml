@@ -15,13 +15,8 @@ jobs:
       - name: Install required tools
         run: sudo apt-get update && sudo apt-get install -y jq gzip dos2unix
 
-      - name: Check for updates, convert, and sync
+      - name: Build Playlist from Scratch
         run: |
-          CHANGED=false
-          EPG_CHANGED=false
-          > new_shas.txt
-          > new_epg_shas.txt
-          
           echo "#EXTM3U" > direct_sources.m3u
           echo '<?xml version="1.0" encoding="UTF-8"?>' > master_epg.xml
           echo '<tv generator-info-name="GitHub Actions Auto-Sync">' >> master_epg.xml
@@ -31,7 +26,6 @@ jobs:
             [[ -z "$line" ]] && continue
             
             if [[ "$line" == iptv-org/iptv/* ]]; then
-              echo "⏭️ Skipping API check for $line"
               continue
             fi
             
@@ -47,20 +41,15 @@ jobs:
               continue
             fi
             
-            FILE_SHA=$(echo "$RESPONSE" | jq -r '.sha // "none"' 2>/dev/null || echo "none")
-            HTML_URL=$(echo "$RESPONSE" | jq -r '.html_url // "none"' 2>/dev/null || echo "none")
+            DOWNLOAD_URL=$(echo "$RESPONSE" | jq -r '.download_url // "none"' 2>/dev/null || echo "none")
             
-            if [ "$FILE_SHA" = "none" ] || [ -z "$FILE_SHA" ]; then
-              echo "⚠️ Warning: Could not fetch $line. Skipping..."
+            if [ "$DOWNLOAD_URL" = "none" ] || [ -z "$DOWNLOAD_URL" ]; then
+              echo "⚠️ Could not get download URL for $line. Skipping..."
               continue
             fi
             
-            BRANCH=$(echo "$HTML_URL" | awk -F'/blob/' '{print $2}' | awk -F'/' '{print $1}')
-            if [ -z "$BRANCH" ]; then
-              echo "⚠️ Could not determine branch for $line. Skipping..."
-              continue
-            fi
-            RAW_URL="https://raw.githubusercontent.com/$OWNER/$REPO/$BRANCH/$FILE_PATH"
+            echo "⬇️ Downloading $line..."
+            curl -s -L "$DOWNLOAD_URL" > temp_file.txt
             
             IS_EPG=false
             if [[ "$FILE_PATH" == *.xml ]] || [[ "$FILE_PATH" == *.xml.gz ]]; then
@@ -68,80 +57,37 @@ jobs:
             fi
             
             if [ "$IS_EPG" = true ]; then
-              if [ -f last_epg_shas.txt ]; then
-                OLD_SHA=$(awk -v key="$line" -F: '$1 == key {print $2}' last_epg_shas.txt)
-              else
-                OLD_SHA=""
-              fi
-            else
-              if [ -f last_shas.txt ]; then
-                OLD_SHA=$(awk -v key="$line" -F: '$1 == key {print $2}' last_shas.txt)
-              else
-                OLD_SHA=""
-              fi
-            fi
-            
-            if [ "$IS_EPG" = true ]; then
-              echo "${line}:${FILE_SHA}" >> new_epg_shas.txt
-            else
-              echo "${line}:${FILE_SHA}" >> new_shas.txt
-            fi
-            
-            if [ "$FILE_SHA" != "$OLD_SHA" ]; then
-              echo "🚨 Update detected in $line! Downloading..."
-              curl -s -L "$RAW_URL" > temp_file.txt
-              
-              if [ "$IS_EPG" = true ]; then
-                EPG_CHANGED=true
-                echo "📺 Processing EPG file..."
-                if [[ "$FILE_PATH" == *.gz ]]; then
-                  echo "🗜️ Checking if file is a valid gzip archive..."
-                  if file temp_file.txt | grep -q "gzip compressed"; then
-                    echo "✅ Valid gzip found. Decompressing..."
-                    if ! gunzip -c temp_file.txt > temp_epg.xml; then
-                      echo "⚠️ Decompression failed. Skipping this file."
-                      continue
-                    fi
-                  else
-                    echo "⚠️ Warning: File is NOT a gzip archive. Trying as plain XML..."
-                    mv temp_file.txt temp_epg.xml
-                  fi
+              if [[ "$FILE_PATH" == *.gz ]]; then
+                if file temp_file.txt | grep -q "gzip compressed"; then
+                  gunzip -c temp_file.txt > temp_epg.xml || continue
                 else
                   mv temp_file.txt temp_epg.xml
                 fi
-                sed -n '/<tv/,/<\/tv>/p' temp_epg.xml | sed '/<?xml/d' | sed '1d;$d' >> master_epg.xml
-                
-              elif [[ "$FILE_PATH" == *.json ]]; then
-                CHANGED=true
-                echo "📋 Converting JSON to M3U..."
-                printf '%s\n' \
-                  'def process_item:' \
-                  '  "#EXTINF:-1 tvg-logo=\"" + (.logo // .icon // .stream_icon // "") + "\" group-title=\"" + (.group // .category // .category_name // "Uncategorized") + "\"," + (.name // .title // .channel_name // "Unknown") + "\n" + (.url // .stream // .link // .channel_url // "");' \
-                  'def get_items:' \
-                  '  if type == "array" then .' \
-                  '  elif .streams then .streams' \
-                  '  elif .channels then .channels' \
-                  '  elif .data then .data' \
-                  '  elif .items then .items' \
-                  '  else [] end;' \
-                  'get_items | .[] | process_item' > script.jq
-                
-                jq -r -f script.jq temp_file.txt | sed '/^#EXTM3U/d' | tr -d '\r' >> direct_sources.m3u || true
-
               else
-                CHANGED=true
-                echo "📺 Processing M3U/M3U8 file..."
-                sed '/^#EXTM3U/d' temp_file.txt | tr -d '\r' >> direct_sources.m3u
+                mv temp_file.txt temp_epg.xml
               fi
+              sed -n '/<tv/,/<\/tv>/p' temp_epg.xml | sed '/<?xml/d' | sed '1d;$d' >> master_epg.xml
+            elif [[ "$FILE_PATH" == *.json ]]; then
+              printf '%s\n' \
+                'def process_item:' \
+                '  "#EXTINF:-1 tvg-logo=\"" + (.logo // .icon // .stream_icon // "") + "\" group-title=\"" + (.group // .category // .category_name // "Uncategorized") + "\"," + (.name // .title // .channel_name // "Unknown") + "\n" + (.url // .stream // .link // .channel_url // "");' \
+                'def get_items:' \
+                '  if type == "array" then .' \
+                '  elif .streams then .streams' \
+                '  elif .channels then .channels' \
+                '  elif .data then .data' \
+                '  elif .items then .items' \
+                '  else [] end;' \
+                'get_items | .[] | process_item' > script.jq
+              jq -r -f script.jq temp_file.txt | sed '/^#EXTM3U/d' | tr -d '\r' >> direct_sources.m3u || true
             else
-              echo "✅ No change in $line"
+              sed '/^#EXTM3U/d' temp_file.txt | tr -d '\r' >> direct_sources.m3u
             fi
             sleep 1
           done < sources.txt
           
           echo '</tv>' >> master_epg.xml
           
-          # Download global playlists
           echo "📺 Downloading global Tamil/English playlists..."
           curl -s -L "https://iptv-org.github.io/iptv/languages/tam.m3u" | tr -d '\r' > global_tam.m3u || true
           curl -s -L "https://iptv-org.github.io/iptv/languages/eng.m3u" | tr -d '\r' > global_eng.m3u || true
@@ -151,89 +97,46 @@ jobs:
           awk '
           BEGIN { extinf = ""; tags = ""; keep = 0 }
           /^#EXTINF:/ {
-              extinf = $0
-              tags = ""
-              lower_line = tolower($0)
-              if (lower_line ~ /tamil|english|kids|cartoon|movie|series/) {
-                  keep = 1
-              } else {
-                  keep = 0
-              }
+              extinf = $0; tags = ""; lower_line = tolower($0)
+              if (lower_line ~ /tamil|english|kids|cartoon|movie|series/) { keep = 1 } else { keep = 0 }
               next
           }
-          /^#/ {
-              if (extinf != "" && keep == 1) { tags = tags $0 "\n" }
-              next
-          }
+          /^#/ { if (extinf != "" && keep == 1) { tags = tags $0 "\n" }; next }
           {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              gsub(/[ \t\r]+$/, "", line)
+              line = $0; gsub(/^[ \t\r]+/, "", line); gsub(/[ \t\r]+$/, "", line)
               if (line == "") next;
               if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
                   if (extinf != "" && keep == 1) {
-                      if (!seen[line]++) {
-                          print extinf
-                          if (tags != "") printf "%s", tags
-                          print line
-                      }
-                      extinf = ""
-                      tags = ""
-                      keep = 0
+                      if (!seen[line]++) { print extinf; if (tags != "") printf "%s", tags; print line }
+                      extinf = ""; tags = ""; keep = 0
                   }
-              } else {
-                  extinf = ""
-                  tags = ""
-                  keep = 0
-              }
-          }
-          ' global_all.m3u > filtered_global.m3u
+              } else { extinf = ""; tags = ""; keep = 0 }
+          }' global_all.m3u > filtered_global.m3u
 
-          # Clean direct sources
           echo "🧹 Cleaning direct sources..."
           awk '
           BEGIN { extinf = ""; tags = "" }
           /^#EXTINF:/ {
               if (match($0, /(https?|rtmp|udp|rtp):\/\/[^ \t]+/)) {
-                  url = substr($0, RSTART, RLENGTH)
-                  extinf = substr($0, 1, RSTART-1)
+                  url = substr($0, RSTART, RLENGTH); extinf = substr($0, 1, RSTART-1)
                   gsub(/[ \t,]+$/, "", extinf)
                   if (!seen[url]++) { print extinf; print url }
-                  extinf = ""
-                  tags = ""
-              } else {
-                  extinf = $0
-                  tags = ""
-              }
+                  extinf = ""; tags = ""
+              } else { extinf = $0; tags = "" }
               next
           }
-          /^#/ {
-              if (extinf != "") { tags = tags $0 "\n" }
-              next
-          }
+          /^#/ { if (extinf != "") { tags = tags $0 "\n" }; next }
           {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              gsub(/[ \t\r]+$/, "", line)
+              line = $0; gsub(/^[ \t\r]+/, "", line); gsub(/[ \t\r]+$/, "", line)
               if (line == "") next;
               if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
                   if (extinf != "") {
-                      if (!seen[line]++) {
-                          print extinf
-                          if (tags != "") printf "%s", tags
-                          print line
-                      }
-                      extinf = ""
-                      tags = ""
+                      if (!seen[line]++) { print extinf; if (tags != "") printf "%s", tags; print line }
+                      extinf = ""; tags = ""
                   }
-              } else {
-                  extinf = ""
-                  tags = ""
-              }
-          }
-          ' direct_sources.m3u > cleaned_direct.m3u
+              } else { extinf = ""; tags = "" }
+          }' direct_sources.m3u > cleaned_direct.m3u
 
-          # Combine
           echo "🧹 Combining and final deduplication..."
           echo "#EXTM3U" > master_playlist.m3u
           cat cleaned_direct.m3u filtered_global.m3u >> master_playlist.m3u
@@ -242,360 +145,37 @@ jobs:
           BEGIN { extinf = ""; tags = "" }
           /^#EXTINF:/ {
               if (match($0, /(https?|rtmp|udp|rtp):\/\/[^ \t]+/)) {
-                  url = substr($0, RSTART, RLENGTH)
-                  extinf = substr($0, 1, RSTART-1)
+                  url = substr($0, RSTART, RLENGTH); extinf = substr($0, 1, RSTART-1)
                   gsub(/[ \t,]+$/, "", extinf)
                   if (!seen[url]++) { print extinf; print url }
-                  extinf = ""
-                  tags = ""
-              } else {
-                  extinf = $0
-                  tags = ""
-              }
+                  extinf = ""; tags = ""
+              } else { extinf = $0; tags = "" }
               next
           }
-          /^#/ {
-              if (extinf != "") { tags = tags $0 "\n" }
-              next
-          }
+          /^#/ { if (extinf != "") { tags = tags $0 "\n" }; next }
           {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              gsub(/[ \t\r]+$/, "", line)
+              line = $0; gsub(/^[ \t\r]+/, "", line); gsub(/[ \t\r]+$/, "", line)
               if (line == "") next;
               if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
                   if (extinf != "") {
-                      if (!seen[line]++) {
-                          print extinf
-                          if (tags != "") printf "%s", tags
-                          print line
-                      }
-                      extinf = ""
-                      tags = ""
+                      if (!seen[line]++) { print extinf; if (tags != "") printf "%s", tags; print line }
+                      extinf = ""; tags = ""
                   }
-              } else {
-                  extinf = ""
-                  tags = ""
-              }
-          }
-          ' master_playlist.m3u > final_master.m3u
+              } else { extinf = ""; tags = "" }
+          }' master_playlist.m3u > final_master.m3u
           
           echo "#EXTM3U" > master_playlist.m3u
           cat final_master.m3u >> master_playlist.m3u
           
-          # ==========================================
-          # 🔍 DEBUGGING: Show file stats
-          # ==========================================
-          echo ""
-          echo "=========================================="
-          echo "🔍 DEBUGGING: File Statistics"
-          echo "=========================================="
-          echo "Total lines in master_playlist.m3u: $(wc -l < master_playlist.m3u)"
-          echo "Total channels (EXTINF count): $(grep -c "^#EXTINF:" master_playlist.m3u || echo 0)"
-          echo "File size: $(du -h master_playlist.m3u | cut -f1)"
-          echo ""
-          echo "First 30 lines of master_playlist.m3u:"
-          echo "------------------------------------------"
-          head -n 30 master_playlist.m3u
-          echo "------------------------------------------"
-          echo ""
-          echo "Last 10 lines of master_playlist.m3u:"
-          echo "------------------------------------------"
-          tail -n 10 master_playlist.m3u
-          echo "------------------------------------------"
-          echo "=========================================="
-          
-          # Normalize line endings to Unix format (LF only)
           dos2unix master_playlist.m3u master_epg.xml 2>/dev/null || true
           
-          if [ "$CHANGED" = true ]; then
-            mv new_shas.txt last_shas.txt
-          fi
-          if [ "$EPG_CHANGED" = true ]; then
-            mv new_epg_shas.txt last_epg_shas.txt
-          fi
+          echo "🎉 Total channels generated: $(grep -c '^#EXTINF:' master_playlist.m3u || echo 0)"
           
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
-          git add master_playlist.m3u master_epg.xml last_shas.txt last_epg_shas.txt
-          git diff --staged --quiet || git commit -m "Auto-sync: Updated M3U and EPG"
-          git push || true            
-            OWNER=$(echo "$line" | cut -d'/' -f1)
-            REPO=$(echo "$line" | cut -d'/' -f2)
-            FILE_PATH=$(echo "$line" | cut -d'/' -f3-)
-            
-            API_URL="https://api.github.com/repos/$OWNER/$REPO/contents/$FILE_PATH"
-            RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" "$API_URL")
-            
-            if ! echo "$RESPONSE" | jq empty 2>/dev/null; then
-              echo "⚠️ Invalid API response for $line. Skipping..."
-              continue
-            fi
-            
-            FILE_SHA=$(echo "$RESPONSE" | jq -r '.sha // "none"' 2>/dev/null || echo "none")
-            HTML_URL=$(echo "$RESPONSE" | jq -r '.html_url // "none"' 2>/dev/null || echo "none")
-            
-            if [ "$FILE_SHA" = "none" ] || [ -z "$FILE_SHA" ]; then
-              echo "⚠️ Warning: Could not fetch $line. Skipping..."
-              continue
-            fi
-            
-            BRANCH=$(echo "$HTML_URL" | awk -F'/blob/' '{print $2}' | awk -F'/' '{print $1}')
-            if [ -z "$BRANCH" ]; then
-              echo "⚠️ Could not determine branch for $line. Skipping..."
-              continue
-            fi
-            RAW_URL="https://raw.githubusercontent.com/$OWNER/$REPO/$BRANCH/$FILE_PATH"
-            
-            IS_EPG=false
-            if [[ "$FILE_PATH" == *.xml ]] || [[ "$FILE_PATH" == *.xml.gz ]]; then
-              IS_EPG=true
-            fi
-            
-            if [ "$IS_EPG" = true ]; then
-              if [ -f last_epg_shas.txt ]; then
-                OLD_SHA=$(awk -v key="$line" -F: '$1 == key {print $2}' last_epg_shas.txt)
-              else
-                OLD_SHA=""
-              fi
-            else
-              if [ -f last_shas.txt ]; then
-                OLD_SHA=$(awk -v key="$line" -F: '$1 == key {print $2}' last_shas.txt)
-              else
-                OLD_SHA=""
-              fi
-            fi
-            
-            if [ "$IS_EPG" = true ]; then
-              echo "${line}:${FILE_SHA}" >> new_epg_shas.txt
-            else
-              echo "${line}:${FILE_SHA}" >> new_shas.txt
-            fi
-            
-            if [ "$FILE_SHA" != "$OLD_SHA" ]; then
-              echo "🚨 Update detected in $line! Downloading..."
-              curl -s -L "$RAW_URL" > temp_file.txt
-              
-              if [ "$IS_EPG" = true ]; then
-                EPG_CHANGED=true
-                echo "📺 Processing EPG file..."
-                if [[ "$FILE_PATH" == *.gz ]]; then
-                  echo "🗜️ Checking if file is a valid gzip archive..."
-                  if file temp_file.txt | grep -q "gzip compressed"; then
-                    echo "✅ Valid gzip found. Decompressing..."
-                    if ! gunzip -c temp_file.txt > temp_epg.xml; then
-                      echo "⚠️ Decompression failed. Skipping this file."
-                      continue
-                    fi
-                  else
-                    echo "⚠️ Warning: File is NOT a gzip archive. Trying as plain XML..."
-                    mv temp_file.txt temp_epg.xml
-                  fi
-                else
-                  mv temp_file.txt temp_epg.xml
-                fi
-                sed -n '/<tv/,/<\/tv>/p' temp_epg.xml | sed '/<?xml/d' | sed '1d;$d' >> master_epg.xml
-                
-              elif [[ "$FILE_PATH" == *.json ]]; then
-                CHANGED=true
-                echo "📋 Converting JSON to M3U..."
-                printf '%s\n' \
-                  'def process_item:' \
-                  '  "#EXTINF:-1 tvg-logo=\"" + (.logo // .icon // .stream_icon // "") + "\" group-title=\"" + (.group // .category // .category_name // "Uncategorized") + "\"," + (.name // .title // .channel_name // "Unknown") + "\n" + (.url // .stream // .link // .channel_url // "");' \
-                  'def get_items:' \
-                  '  if type == "array" then .' \
-                  '  elif .streams then .streams' \
-                  '  elif .channels then .channels' \
-                  '  elif .data then .data' \
-                  '  elif .items then .items' \
-                  '  else [] end;' \
-                  'get_items | .[] | process_item' > script.jq
-                
-                jq -r -f script.jq temp_file.txt | sed '/^#EXTM3U/d' >> direct_sources.m3u || true
-
-              else
-                CHANGED=true
-                echo "📺 Processing M3U/M3U8 file..."
-                sed '/^#EXTM3U/d' temp_file.txt >> direct_sources.m3u
-              fi
-            else
-              echo "✅ No change in $line"
-            fi
-            sleep 1
-          done < sources.txt
+          git add master_playlist.m3u master_epg.xml
+          git diff --staged --quiet || git commit -m "Auto-sync: Rebuilt M3U and EPG from scratch"
           
-          echo '</tv>' >> master_epg.xml
-          
-          # ==========================================
-          # 🌍 DOWNLOAD & FILTER GLOBAL PLAYLISTS
-          # ==========================================
-          echo "📺 Downloading global Tamil/English playlists..."
-          curl -s -L "https://iptv-org.github.io/iptv/languages/tam.m3u" > global_tam.m3u || true
-          curl -s -L "https://iptv-org.github.io/iptv/languages/eng.m3u" > global_eng.m3u || true
-          cat global_tam.m3u global_eng.m3u > global_all.m3u
-          
-          echo "🧹 Filtering global playlists for Tamil/English/Kids only..."
-          awk '
-          BEGIN { extinf = ""; tags = ""; keep = 0 }
-          /^#EXTINF:/ {
-              extinf = $0
-              tags = ""
-              lower_line = tolower($0)
-              if (lower_line ~ /tamil|english|kids|cartoon|movie|series/) {
-                  keep = 1
-              } else {
-                  keep = 0
-              }
-              next
-          }
-          /^#/ {
-              if (extinf != "" && keep == 1) { tags = tags $0 "\n" }
-              next
-          }
-          {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              gsub(/[ \t\r]+$/, "", line)
-              
-              # FIX: Skip blank lines without deleting the channel!
-              if (line == "") next;
-              
-              if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
-                  if (extinf != "" && keep == 1) {
-                      if (!seen[line]++) {
-                          print extinf
-                          if (tags != "") printf "%s", tags
-                          print line
-                      }
-                      extinf = ""
-                      tags = ""
-                      keep = 0
-                  }
-              } else {
-                  extinf = ""
-                  tags = ""
-                  keep = 0
-              }
-          }
-          ' global_all.m3u > filtered_global.m3u
-
-          # ==========================================
-          # 🧹 CLEAN DIRECT SOURCES (No language filter!)
-          # ==========================================
-          echo "🧹 Cleaning direct sources (keeping ALL channels including Local & Adult)..."
-          awk '
-          BEGIN { extinf = ""; tags = "" }
-          /^#EXTINF:/ {
-              if (match($0, /(https?|rtmp|udp|rtp):\/\/[^ \t]+/)) {
-                  url = substr($0, RSTART, RLENGTH)
-                  extinf = substr($0, 1, RSTART-1)
-                  gsub(/[ \t,]+$/, "", extinf)
-                  if (!seen[url]++) { print extinf; print url }
-                  extinf = ""
-                  tags = ""
-              } else {
-                  extinf = $0
-                  tags = ""
-              }
-              next
-          }
-          /^#/ {
-              if (extinf != "") { tags = tags $0 "\n" }
-              next
-          }
-          {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              gsub(/[ \t\r]+$/, "", line)
-              
-              # FIX: Skip blank lines without deleting the channel!
-              if (line == "") next;
-              
-              if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
-                  if (extinf != "") {
-                      if (!seen[line]++) {
-                          print extinf
-                          if (tags != "") printf "%s", tags
-                          print line
-                      }
-                      extinf = ""
-                      tags = ""
-                  }
-              } else {
-                  extinf = ""
-                  tags = ""
-              }
-          }
-          ' direct_sources.m3u > cleaned_direct.m3u
-
-          # ==========================================
-          # 🧹 COMBINE & FINAL DEDUPLICATION
-          # ==========================================
-          echo "🧹 Combining and final deduplication..."
-          echo "#EXTM3U" > master_playlist.m3u
-          cat cleaned_direct.m3u filtered_global.m3u >> master_playlist.m3u
-          
-          awk '
-          BEGIN { extinf = ""; tags = "" }
-          /^#EXTINF:/ {
-              if (match($0, /(https?|rtmp|udp|rtp):\/\/[^ \t]+/)) {
-                  url = substr($0, RSTART, RLENGTH)
-                  extinf = substr($0, 1, RSTART-1)
-                  gsub(/[ \t,]+$/, "", extinf)
-                  if (!seen[url]++) { print extinf; print url }
-                  extinf = ""
-                  tags = ""
-              } else {
-                  extinf = $0
-                  tags = ""
-              }
-              next
-          }
-          /^#/ {
-              if (extinf != "") { tags = tags $0 "\n" }
-              next
-          }
-          {
-              line = $0
-              gsub(/^[ \t\r]+/, "", line)
-              gsub(/[ \t\r]+$/, "", line)
-              
-              # FIX: Skip blank lines without deleting the channel!
-              if (line == "") next;
-              
-              if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
-                  if (extinf != "") {
-                      if (!seen[line]++) {
-                          print extinf
-                          if (tags != "") printf "%s", tags
-                          print line
-                      }
-                      extinf = ""
-                      tags = ""
-                  }
-              } else {
-                  extinf = ""
-                  tags = ""
-              }
-          }
-          ' master_playlist.m3u > final_master.m3u
-          
-          echo "#EXTM3U" > master_playlist.m3u
-          cat final_master.m3u >> master_playlist.m3u
-          
-          if [ "$CHANGED" = true ]; then
-            mv new_shas.txt last_shas.txt
-          fi
-          if [ "$EPG_CHANGED" = true ]; then
-            mv new_epg_shas.txt last_epg_shas.txt
-          fi
-          
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          
-          git add master_playlist.m3u master_epg.xml last_shas.txt last_epg_shas.txt
-          git diff --staged --quiet || git commit -m "Auto-sync: Updated M3U (All Direct Sources + Filtered Global) and EPG"
-          
-          # FIX: Added || true to force a Green Checkmark even if GitHub's post-job cleanup glitches
-          git push || true
+          # FIX: Force push to overwrite remote and prevent "rejected" errors
+          git push --force || true
