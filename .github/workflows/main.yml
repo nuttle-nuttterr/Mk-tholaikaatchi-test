@@ -17,11 +17,11 @@ jobs:
 
       - name: Build Playlist from Scratch
         run: |
-          echo "#EXTM3U" > direct_sources.m3u
-          echo "#EXTM3U" > vmfm_local.m3u
+          echo '#EXTM3U' > master_playlist.m3u
           echo '<?xml version="1.0" encoding="UTF-8"?>' > master_epg.xml
           echo '<tv generator-info-name="GitHub Actions Auto-Sync">' >> master_epg.xml
           
+          # Process each source
           while IFS= read -r line || [[ -n "$line" ]]; do
             line=$(echo "$line" | tr -d '\r')
             [[ -z "$line" ]] && continue
@@ -35,6 +35,199 @@ jobs:
             FILE_PATH=$(echo "$line" | cut -d'/' -f3-)
             
             API_URL="https://api.github.com/repos/$OWNER/$REPO/contents/$FILE_PATH"
+            RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" "$API_URL")
+            
+            if ! echo "$RESPONSE" | jq empty 2>/dev/null; then
+              continue
+            fi
+            
+            DOWNLOAD_URL=$(echo "$RESPONSE" | jq -r '.download_url // "none"' 2>/dev/null || echo "none")
+            
+            if [ "$DOWNLOAD_URL" = "none" ] || [ -z "$DOWNLOAD_URL" ]; then
+              continue
+            fi
+            
+            echo "⬇️ Downloading $line..."
+            curl -s -L "$DOWNLOAD_URL" > temp_file.txt
+            
+            # Handle EPG files
+            if [[ "$FILE_PATH" == *.xml ]] || [[ "$FILE_PATH" == *.xml.gz ]]; then
+              if [[ "$FILE_PATH" == *.gz ]]; then
+                if file temp_file.txt | grep -q "gzip compressed"; then
+                  gunzip -c temp_file.txt > temp_epg.xml || continue
+                else
+                  mv temp_file.txt temp_epg.xml
+                fi
+              else
+                mv temp_file.txt temp_epg.xml
+              fi
+              sed -n '/<tv/,/<\/tv>/p' temp_epg.xml | sed '/<?xml/d' | sed '1d;$d' >> master_epg.xml
+              continue
+            fi
+            
+            # Handle JSON files
+            if [[ "$FILE_PATH" == *.json ]]; then
+              printf '%s\n' \
+                'def process_item:' \
+                '  "#EXTINF:-1 tvg-logo=\"" + (.logo // .icon // .stream_icon // "") + "\" group-title=\"" + (.group // .category // .category_name // "Uncategorized") + "\"," + (.name // .title // .channel_name // "Unknown") + "\n" + (.url // .stream // .link // .channel_url // "");' \
+                'def get_items:' \
+                '  if type == "array" then .' \
+                '  elif .streams then .streams' \
+                '  elif .channels then .channels' \
+                '  elif .data then .data' \
+                '  elif .items then .items' \
+                '  else [] end;' \
+                'get_items | .[] | process_item' > script.jq
+              jq -r -f script.jq temp_file.txt | sed '/^#EXTM3U/d' > converted.m3u
+            else
+              sed '/^#EXTM3U/d' temp_file.txt > converted.m3u
+            fi
+            
+            # Apply filters based on source
+            if [[ "$line" == Vmfm/* ]]; then
+              echo "🏷️ Processing Vmfm as local channels..."
+              # Force all Vmfm to "local channels" category
+              awk 'BEGIN{OFS=""} /^#EXTINF:/{idx=index($0,","); if(idx>0){attrs=substr($0,1,idx-1); name=substr($0,idx+1); gsub(/group-title="[^"]*"/,"",attrs); print attrs" group-title=\"local channels\","name} else {print}; next} {print}' converted.m3u >> master_playlist.m3u
+            else
+              # For all other sources: ONLY keep Tamil or English (news/sports/movies)
+              echo "🧹 Filtering $line for Tamil/English only..."
+              awk '
+              /^#EXTINF:/ {
+                  extinf = $0
+                  lower_line = tolower($0)
+                  
+                  # Check if Tamil
+                  is_tamil = (lower_line ~ /tamil/)
+                  
+                  # Check if English news/sports/movies only
+                  is_english_ok = (lower_line ~ /english/ && lower_line ~ /news|sport|movie|cinema|film/)
+                  
+                  # Keep only if Tamil OR English(news/sports/movies)
+                  if (is_tamil || is_english_ok) {
+                      keep = 1
+                  } else {
+                      keep = 0
+                  }
+                  next
+              }
+              {
+                  line = $0
+                  gsub(/^[ \t\r]+/, "", line)
+                  gsub(/[ \t\r]+$/, "", line)
+                  
+                  if (line == "") next
+                  
+                  if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
+                      if (extinf != "" && keep == 1) {
+                          if (!seen[line]++) {
+                              print extinf
+                              print line
+                          }
+                          extinf = ""
+                          keep = 0
+                      }
+                  } else {
+                      extinf = ""
+                      keep = 0
+                  }
+              }' converted.m3u >> master_playlist.m3u
+            fi
+            
+            sleep 1
+          done < sources.txt
+          
+          echo '</tv>' >> master_epg.xml
+          
+          # Download global Tamil playlist
+          echo "📺 Downloading global Tamil playlist..."
+          curl -s -L "https://iptv-org.github.io/iptv/languages/tam.m3u" | sed '/^#EXTM3U/d' >> master_playlist.m3u
+          
+          # Download global English playlist (ONLY news/sports/movies)
+          echo "📺 Downloading global English playlist (news/sports/movies only)..."
+          curl -s -L "https://iptv-org.github.io/iptv/languages/eng.m3u" | awk '
+          /^#EXTINF:/ {
+              extinf = $0
+              lower_line = tolower($0)
+              if (lower_line ~ /news|sport|movie|cinema|film/) {
+                  keep = 1
+              } else {
+                  keep = 0
+              }
+              next
+          }
+          {
+              line = $0
+              gsub(/^[ \t\r]+/, "", line)
+              gsub(/[ \t\r]+$/, "", line)
+              if (line == "") next
+              if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
+                  if (extinf != "" && keep == 1) {
+                      if (!seen[line]++) {
+                          print extinf
+                          print line
+                      }
+                      extinf = ""
+                      keep = 0
+                  }
+              } else {
+                  extinf = ""
+                  keep = 0
+              }
+          }' >> master_playlist.m3u
+          
+          # Final deduplication
+          echo "🧹 Final deduplication..."
+          awk '
+          /^#EXTINF:/ {
+              if (match($0, /(https?|rtmp|udp|rtp):\/\/[^ \t]+/)) {
+                  url = substr($0, RSTART, RLENGTH)
+                  extinf = substr($0, 1, RSTART-1)
+                  gsub(/[ \t,]+$/, "", extinf)
+                  if (!seen[url]++) {
+                      print extinf
+                      print url
+                  }
+                  extinf = ""
+              } else {
+                  extinf = $0
+              }
+              next
+          }
+          /^#/ { next }
+          {
+              line = $0
+              gsub(/^[ \t\r]+/, "", line)
+              gsub(/[ \t\r]+$/, "", line)
+              if (line == "") next
+              if (line ~ /^(https?|rtmp|mms|udp|rtp|file):\/\//) {
+                  if (extinf != "") {
+                      if (!seen[line]++) {
+                          print extinf
+                          print line
+                      }
+                      extinf = ""
+                  }
+              } else {
+                  extinf = ""
+              }
+          }' master_playlist.m3u > final_master.m3u
+          
+          echo '#EXTM3U' > master_playlist.m3u
+          cat final_master.m3u >> master_playlist.m3u
+          
+          dos2unix master_playlist.m3u master_epg.xml 2>/dev/null || true
+          
+          echo "🎉 Total channels: $(grep -c '^#EXTINF:' master_playlist.m3u || echo 0)"
+          echo "🎉 Tamil channels: $(grep -ic 'tamil' master_playlist.m3u || echo 0)"
+          echo "🎉 English channels: $(grep -ic 'english' master_playlist.m3u || echo 0)"
+          echo "🎉 Local channels: $(grep -c 'group-title="local channels"' master_playlist.m3u || echo 0)"
+          
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          git add master_playlist.m3u master_epg.xml
+          git diff --staged --quiet || git commit -m "Auto-sync: Tamil + English(news/sports/movies) only"
+          git push --force || true            API_URL="https://api.github.com/repos/$OWNER/$REPO/contents/$FILE_PATH"
             RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" "$API_URL")
             
             if ! echo "$RESPONSE" | jq empty 2>/dev/null; then
