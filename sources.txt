@@ -12,7 +12,6 @@ PraveenBojja83/praveentv/resource/channels.json
 Indiblog/india-iptv/output/india_iptv.m3u
 Indiblog/india-iptv/output/india_general.m3u
 Indiblog/india-iptv/output/channels.json
-dsgeletrobancada-dotcom/iptv-xxx/novPlista.m3u
 amazeyourself/m3u/epg/airtel.xml
 amazeyourself/m3u/epg/airtel.xml.gz
 amazeyourself/m3u/jtv.m3u
