@@ -21,16 +21,7 @@ jobs:
           echo "🚀 BUILDING FINAL PLAYLIST"
           echo "=========================================="
           
-          # Initialize category files
-          > tamil_local.tmp
-          > tamil_movies.tmp
-          > tamil_news.tmp
-          > tamil_music.tmp
-          > tamil_kids.tmp
-          > english_movies.tmp
-          > english_news.tmp
-          > sports.tmp
-          
+          echo '#EXTM3U' > master_playlist.m3u
           echo '<?xml version="1.0" encoding="UTF-8"?>' > master_epg.xml
           echo '<tv>' >> master_epg.xml
           
@@ -86,42 +77,46 @@ jobs:
               cp temp_file.txt converted.m3u
             fi
             
-            # Categorize channels - NOW CHECKING BOTH #EXTINF AND URL LINES
+            # Process and categorize with PROPER group-title
             awk '
+            BEGIN {
+                extinf = ""
+                category = ""
+            }
             /^#EXTINF:/ {
                 extinf = $0
-                lower = tolower($0)
+                lower_extinf = tolower($0)
                 
-                # Initial category from #EXTINF line
-                if (lower ~ /tamil.*local|local.*tamil/) {
-                    category = "local"
+                # Determine category from EXTINF
+                if (lower_extinf ~ /tamil.*local|local.*tamil/) {
+                    category = "Tamil Local Channels"
                 }
-                else if (lower ~ /tamil/ && lower ~ /movie|cinema|film|j movie|k tv|raj digital|zee thirai|jaya movie|premium|24x7/) {
-                    category = "tamil_movies"
+                else if (lower_extinf ~ /tamil/ && lower_extinf ~ /movie|cinema|film|j movie|k tv|raj digital|zee thirai|jaya movie|premium|24x7/) {
+                    category = "Tamil Movies"
                 }
-                else if (lower ~ /tamil/ && lower ~ /news|thanthi|polimer news|raj news|kalaignar news|news j|news7|news18|win news|puthiya|sathiyam|madhimugam/) {
-                    category = "tamil_news"
+                else if (lower_extinf ~ /tamil/ && lower_extinf ~ /news|thanthi|polimer news|raj news|kalaignar news|news j|news7|news18|win news|puthiya|sathiyam|madhimugam/) {
+                    category = "Tamil News"
                 }
-                else if (lower ~ /tamil/ && lower ~ /music|musix|isaiaruvi|sun music|raj musix|g music|jcv musix|jp music/) {
-                    category = "tamil_music"
+                else if (lower_extinf ~ /tamil/ && lower_extinf ~ /music|musix|isaiaruvi|sun music|raj musix|g music|jcv musix|jp music/) {
+                    category = "Tamil Music"
                 }
-                else if (lower ~ /kids|chutti|cartoon|nick|pogo|sonic|discovery kids|chhota|motu|scooby|vir the robot/) {
-                    category = "tamil_kids"
+                else if (lower_extinf ~ /kids|chutti|cartoon|nick|pogo|sonic|discovery kids|chhota|motu|scooby|vir the robot/) {
+                    category = "Tamil Kids"
                 }
-                else if (lower ~ /english/ && lower ~ /movie|cinema|film/) {
-                    category = "english_movies"
+                else if (lower_extinf ~ /english/ && lower_extinf ~ /movie|cinema|film/) {
+                    category = "English Movies"
                 }
-                else if (lower ~ /english/ && lower ~ /news/) {
-                    category = "english_news"
+                else if (lower_extinf ~ /english/ && lower_extinf ~ /news/) {
+                    category = "English News"
                 }
-                else if (lower ~ /sport|cricket|football|tennis/) {
-                    category = "sports"
+                else if (lower_extinf ~ /sport|cricket|football|tennis/) {
+                    category = "Sports"
                 }
-                else if (lower ~ /tamil/) {
-                    category = "tamil_movies"
+                else if (lower_extinf ~ /tamil/) {
+                    category = "Tamil Movies"
                 }
                 else {
-                    category = "unknown"
+                    category = "skip"
                 }
                 next
             }
@@ -131,22 +126,25 @@ jobs:
                 if (line == "") next
                 
                 if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                    lower_line = tolower(line)
+                    lower_url = tolower(line)
                     
-                    # FIX: Also check URL line for provider domains
-                    if (lower_line ~ /galaxyott|sscloud|applelive|ipcloud|onecloudlive|bmlive|phoenixcreations|singamcloud|olidigital|tamilstream|rojatv|maxtn|notvstream|apserver|rcserver|brightmeltech|mindspell|7starcloud|livebox|yuppcdn|tangotv|dailyhunt|pishow|streamjo|massstream|tatatv|ranapk|ashokadigital|103\.140\.254|103\.87\.105|198\.144\.149/) {
-                        category = "local"
+                    # Check URL for local providers
+                    if (lower_url ~ /galaxyott|sscloud|applelive|ipcloud|onecloudlive|bmlive|phoenixcreations|singamcloud|olidigital|tamilstream|rojatv|maxtn|notvstream|apserver|rcserver|brightmeltech|mindspell|7starcloud|livebox|yuppcdn|tangotv|dailyhunt|pishow|streamjo|massstream|tatatv|ranapk|ashokadigital|103\.140\.254|103\.87\.105|198\.144\.149/) {
+                        category = "Tamil Local Channels"
                     }
                     
-                    if (extinf != "" && category != "skip" && category != "unknown") {
-                        if (category == "local") print extinf "\n" line > "tamil_local.tmp"
-                        else if (category == "tamil_movies") print extinf "\n" line > "tamil_movies.tmp"
-                        else if (category == "tamil_news") print extinf "\n" line > "tamil_news.tmp"
-                        else if (category == "tamil_music") print extinf "\n" line > "tamil_music.tmp"
-                        else if (category == "tamil_kids") print extinf "\n" line > "tamil_kids.tmp"
-                        else if (category == "english_movies") print extinf "\n" line > "english_movies.tmp"
-                        else if (category == "english_news") print extinf "\n" line > "english_news.tmp"
-                        else if (category == "sports") print extinf "\n" line > "sports.tmp"
+                    if (extinf != "" && category != "skip") {
+                        # Remove old group-title and add new one
+                        gsub(/group-title="[^"]*"/, "", extinf)
+                        # Insert group-title before the channel name (after the comma)
+                        if (match(extinf, /,[^,]*$/)) {
+                            before = substr(extinf, 1, RSTART)
+                            after = substr(extinf, RSTART + 1)
+                            extinf = before " group-title=\"" category "\"," after
+                        }
+                        
+                        print extinf
+                        print line
                         extinf = ""
                         category = ""
                     }
@@ -154,7 +152,7 @@ jobs:
                     extinf = ""
                     category = ""
                 }
-            }' converted.m3u
+            }' converted.m3u >> master_playlist.m3u
             
             echo "✅ Categorized"
             sleep 1
@@ -167,15 +165,16 @@ jobs:
           echo "📺 ADDING GLOBAL PLAYLISTS"
           echo "=========================================="
           
+          # Add global Tamil with proper categories
           curl -s "https://iptv-org.github.io/iptv/languages/tam.m3u" | awk '
           /^#EXTINF:/ {
               extinf = $0
               lower = tolower($0)
-              if (lower ~ /movie|cinema|film/) category = "tamil_movies"
-              else if (lower ~ /news/) category = "tamil_news"
-              else if (lower ~ /music/) category = "tamil_music"
-              else if (lower ~ /kids|cartoon/) category = "tamil_kids"
-              else category = "tamil_movies"
+              if (lower ~ /movie|cinema|film/) category = "Tamil Movies"
+              else if (lower ~ /news/) category = "Tamil News"
+              else if (lower ~ /music/) category = "Tamil Music"
+              else if (lower ~ /kids|cartoon/) category = "Tamil Kids"
+              else category = "Tamil Movies"
               next
           }
           {
@@ -184,22 +183,27 @@ jobs:
               if (line == "") next
               if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
                   if (extinf != "") {
-                      if (category == "tamil_movies") print extinf "\n" line > "tamil_movies.tmp"
-                      else if (category == "tamil_news") print extinf "\n" line > "tamil_news.tmp"
-                      else if (category == "tamil_music") print extinf "\n" line > "tamil_music.tmp"
-                      else if (category == "tamil_kids") print extinf "\n" line > "tamil_kids.tmp"
+                      gsub(/group-title="[^"]*"/, "", extinf)
+                      if (match(extinf, /,[^,]*$/)) {
+                          before = substr(extinf, 1, RSTART)
+                          after = substr(extinf, RSTART + 1)
+                          extinf = before " group-title=\"" category "\"," after
+                      }
+                      print extinf
+                      print line
                       extinf = ""
                   }
               }
-          }'
+          }' >> master_playlist.m3u
           
+          # Add global English (only news/sports/movies)
           curl -s "https://iptv-org.github.io/iptv/languages/eng.m3u" | awk '
           /^#EXTINF:/ {
               extinf = $0
               lower = tolower($0)
-              if (lower ~ /movie|cinema|film/) category = "english_movies"
-              else if (lower ~ /news/) category = "english_news"
-              else if (lower ~ /sport/) category = "sports"
+              if (lower ~ /movie|cinema|film/) category = "English Movies"
+              else if (lower ~ /news/) category = "English News"
+              else if (lower ~ /sport/) category = "Sports"
               else category = "skip"
               next
           }
@@ -209,69 +213,25 @@ jobs:
               if (line == "") next
               if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
                   if (extinf != "" && category != "skip") {
-                      if (category == "english_movies") print extinf "\n" line > "english_movies.tmp"
-                      else if (category == "english_news") print extinf "\n" line > "english_news.tmp"
-                      else if (category == "sports") print extinf "\n" line > "sports.tmp"
+                      gsub(/group-title="[^"]*"/, "", extinf)
+                      if (match(extinf, /,[^,]*$/)) {
+                          before = substr(extinf, 1, RSTART)
+                          after = substr(extinf, RSTART + 1)
+                          extinf = before " group-title=\"" category "\"," after
+                      }
+                      print extinf
+                      print line
                       extinf = ""
                   }
               }
-          }'
+          }' >> master_playlist.m3u
           
           echo ""
           echo "=========================================="
-          echo "🧹 TESTING URLS (EXCEPT LOCAL)"
+          echo "🧹 DEDUPLICATING"
           echo "=========================================="
           
-          for file in tamil_movies.tmp tamil_news.tmp tamil_music.tmp tamil_kids.tmp english_movies.tmp english_news.tmp sports.tmp; do
-            if [ -f "$file" ] && [ -s "$file" ]; then
-              echo "🔍 Testing $file..."
-              awk '
-              /^#EXTINF:/ { extinf = $0; next }
-              {
-                  line = $0
-                  gsub(/^[ \t\r]+/, "", line)
-                  if (line == "") next
-                  if (line ~ /^(https?|rtmp|mms|udp|rtp):\/\//) {
-                      if (extinf != "") {
-                          print extinf
-                          print line
-                          extinf = ""
-                      }
-                  }
-              }' "$file" > "${file}.clean"
-              mv "${file}.clean" "$file"
-            fi
-          done
-          
-          echo ""
-          echo "=========================================="
-          echo "🧹 COMBINING & DEDUPLICATING"
-          echo "=========================================="
-          
-          echo '#EXTM3U' > master_playlist.m3u
-          
-          add_category() {
-            local name="$1"
-            local file="$2"
-            if [ -f "$file" ] && [ -s "$file" ]; then
-              count=$(grep -c '^#EXTINF:' "$file" 2>/dev/null || echo 0)
-              echo "" >> master_playlist.m3u
-              echo "# $name" >> master_playlist.m3u
-              cat "$file" >> master_playlist.m3u
-              echo "✅ Added $count channels to $name"
-            fi
-          }
-          
-          add_category "Tamil Local Channels" tamil_local.tmp
-          add_category "Tamil Movies" tamil_movies.tmp
-          add_category "Tamil News" tamil_news.tmp
-          add_category "Tamil Music" tamil_music.tmp
-          add_category "Tamil Kids" tamil_kids.tmp
-          add_category "English Movies" english_movies.tmp
-          add_category "English News" english_news.tmp
-          add_category "Sports" sports.tmp
-          
-          # Final deduplication
+          # Deduplicate
           awk '
           /^#EXTINF:/ { extinf = $0; next }
           {
@@ -300,6 +260,9 @@ jobs:
           echo "=========================================="
           TOTAL=$(grep -c '^#EXTINF:' master_playlist.m3u)
           echo "🎉 TOTAL CHANNELS: $TOTAL"
+          echo ""
+          echo "📁 Categories:"
+          grep -o 'group-title="[^"]*"' master_playlist.m3u | sort | uniq -c | sort -rn
           
           echo ""
           echo "=========================================="
@@ -309,5 +272,5 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add master_playlist.m3u master_epg.xml
-          git diff --staged --quiet || git commit -m "Final: Categorized Tamil/English with working local channels"
+          git diff --staged --quiet || git commit -m "Final: Proper categories with group-title"
           git push --force || true
