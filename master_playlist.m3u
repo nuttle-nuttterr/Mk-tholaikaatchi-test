@@ -1,6 +1,14 @@
 #EXTM3U
 #EXTINF:-1 tvg-id="RojaTV" tvg-chno="1805" tvg-name="Roja TV" tvg-logo="https://cdn.neotvapp.com/file/quickfox/top-tv/channels/ROJA TV 512512-1774979167302.jpg" group-title="Entertainment",Roja TV
 https://hls.rojatv.cloud/rojatv/rojatv/index.m3u8
+#EXTINF:-1 tvg-id="RojaMovies" tvg-chno="1806" tvg-name="Roja Movies" tvg-logo="https://cdn.neotvapp.com/file/quickfox/top-tv/channels/IMG-20260331-WA0002-1774979228956.jpg" group-title="Movies",Roja Movies
+https://hls.rojatv.cloud/rojamovies/rojamovies/index.m3u8
+#EXTINF:-1 tvg-id="OLI TV" tvg-chno="1808" tvg-name="Oli TV" tvg-logo="https://cdn.neotvapp.com/file/quickfox/top-tv/channels/oli-1776458876096.jpg" group-title="Entertainment",Oli TV
+https://hlslive.olidigital.in/olitv/olitv/index.m3u8
+#EXTINF:-1 tvg-id="" tvg-chno="1809" tvg-name="SGB TV" tvg-logo="https://cdn.neotvapp.com/file/quickfox/top-tv/channels/1000159114-1781435419226.jpg" group-title="Entertainment",SGB TV
+https://hlsstream.olidigital.in/sgbtv/sgbtv/index.m3u8
+#EXTINF:-1 tvg-id="" tvg-chno="1816" tvg-name="JJ News" tvg-logo="https://cdn.neotvapp.com/file/quickfox/top-tv/channels/jjnews-1776875451411.jpg" group-title="News",JJ News
+https://hlsstream.olidigital.in/jjtvnewstamil/jjtvnewstamil/index.m3u8
 #EXTINF:-1 tvg-id="Andflix.in@HD" tvg-logo="https://dtil.tmsimg.com/assets/GNLZZGG0022J67W.png?lock=720x540" group-title="Movies",&flix HD (1080p)
 http://103.72.101.252:8080/live/1322.m3u8
 #EXTINF:-1 tvg-id="AaseervathamTV.in@SD" tvg-logo="https://i.imgur.com/GlfrYs7.png" group-title="Religious",Aaseervatham TV (576p)
