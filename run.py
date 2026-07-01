@@ -1,78 +1,130 @@
 import requests
 import re
+import json
 import time
 
-def main():
-    print("Starting playlist generation...")
-    
-    urls_to_fetch = [
-        "https://iptv-org.github.io/iptv/languages/tam.m3u",
-        "https://iptv-org.github.io/iptv/languages/eng.m3u"
-    ]
-    
-    categories = {
-        "Tamil Entertainment": ["sun tv", "star vijay", "zee tamil", "colors tamil", "kalaignar", "raj tv", "polimer", "mega tv", "vasanth", "puthuyugam", "captain", "adithya", "vendhar", "jaya tv", "d tamil", "maalai malar", "sirippoli"],
-        "Tamil News": ["sun news", "raj news", "thanthi", "puthiya thalaimurai", "news18 tamil", "polimer news", "news7", "news j", "kalaignar seithigal", "win news", "sathiyam", "madhimugam", "captain news", "lotus news"],
-        "Tamil Movies": ["ktv", "zee thirai", "sun life", "raj digital", "jaya movie", "mega movies", "vijay super", "raj movies", "kollywood", "tamil movies", "tamil cinemax"],
-        "Tamil Music": ["sun music", "raj musix", "isai aruvi", "jaya plus", "g music", "makkal tv", "jcv musix", "mega music", "isai music"],
-        "Tamil Kids": ["chutti tv", "chithiram", "cartoon network", "pogo", "discovery kids", "sony yay", "nick", "disney channel", "hungama", "kochu"],
-        "Tamil Devotional": ["angel tv", "sathya tv", "murugan tv", "jeevan tv", "aruloli", "shubhsandesh", "goodness", "nambikkai", "sanskar", "aastha"],
-        "Tamil Infotainment": ["discovery", "national geographic", "history tv", "animal planet", "bbc earth", "nat geo"],
-        "Tamil Shopping": ["home shop", "india shop", "dd kisan"],
-        "Sports": ["star sports", "sony ten", "eurosport", "dd sports", "sports", "cricket", "football", "tennis"]
-    }
-    
-    final_channels = {cat: [] for cat in categories.keys()}
-    seen_urls = set()
-    
-    for source_url in urls_to_fetch:
-        print(f"Fetching {source_url}...")
-        try:
-            response = requests.get(source_url, timeout=10)
-            response.raise_for_status()
-            lines = response.text.splitlines()
-            
+# ==========================================
+# 1. ALL YOUR ORIGINAL SOURCES
+# ==========================================
+SOURCES = [
+    "https://raw.githubusercontent.com/Vmfm/tamilvmtv/main/live/channels.m3u",
+    "https://raw.githubusercontent.com/Vmfm/tamilvmtv/main/live/jio.m3u",
+    "https://raw.githubusercontent.com/Tamilwebcast/Tamilwebcast.github.io/main/TWCIPTV.m3u",
+    "https://raw.githubusercontent.com/PraveenBojja83/praveentv/main/resource/channels.json",
+    "https://raw.githubusercontent.com/Indiblog/india-iptv/main/output/india_iptv.m3u",
+    "https://raw.githubusercontent.com/Indiblog/india-iptv/main/output/india_general.m3u",
+    "https://raw.githubusercontent.com/amazeyourself/m3u/main/jtv.m3u",
+    "https://raw.githubusercontent.com/amazeyourself/m3u/main/pishow.m3u",
+    "https://raw.githubusercontent.com/amazeyourself/m3u/main/yupptvfast.m3u",
+    "https://raw.githubusercontent.com/amazeyourself/m3u/main/tangotv.m3u",
+    "https://raw.githubusercontent.com/amazeyourself/m3u/main/ashokadigital.m3u",
+    "https://raw.githubusercontent.com/amazeyourself/m3u/main/neotv.m3u",
+    "https://iptv-org.github.io/iptv/languages/tam.m3u",
+    "https://iptv-org.github.io/iptv/languages/eng.m3u"
+]
+
+# ==========================================
+# 2. YOUR EXACT CATEGORIES
+# ==========================================
+CATEGORIES = {
+    "Tamil Entertainment": ["sun tv", "star vijay", "zee tamil", "colors tamil", "kalaignar", "raj tv", "polimer", "mega tv", "vasanth", "puthuyugam", "captain", "adithya", "vendhar", "jaya tv", "d tamil", "maalai malar", "sirippoli"],
+    "Tamil News": ["sun news", "raj news", "thanthi", "puthiya thalaimurai", "news18 tamil", "polimer news", "news7", "news j", "kalaignar seithigal", "win news", "sathiyam", "madhimugam", "captain news", "lotus news"],
+    "Tamil Movies": ["ktv", "zee thirai", "sun life", "raj digital", "jaya movie", "mega movies", "vijay super", "raj movies", "kollywood", "tamil movies", "tamil cinemax"],
+    "Tamil Music": ["sun music", "raj musix", "isai aruvi", "jaya plus", "g music", "makkal tv", "jcv musix", "mega music", "isai music"],
+    "Tamil Kids": ["chutti tv", "chithiram", "cartoon network", "pogo", "discovery kids", "sony yay", "nick", "disney channel", "hungama", "kochu"],
+    "Tamil Devotional": ["angel tv", "sathya tv", "murugan tv", "jeevan tv", "aruloli", "shubhsandesh", "goodness", "nambikkai", "sanskar", "aastha"],
+    "Tamil Infotainment": ["discovery", "national geographic", "history tv", "animal planet", "bbc earth", "nat geo"],
+    "Tamil Shopping": ["home shop", "india shop", "dd kisan"],
+    "Sports": ["star sports", "sony ten", "eurosport", "dd sports", "sports", "cricket", "football", "tennis"]
+}
+
+def clean_name(name):
+    name = re.sub(r'\s*\[.*?\]\s*', '', name)
+    name = re.sub(r'\s*\(.*?\)\s*', '', name)
+    name = re.sub(r'\s*\b(HD|SD|HEVC|4K|UHD)\b\s*', '', name, flags=re.I)
+    return ' '.join(name.split()).strip()
+
+def get_category(name):
+    n = name.lower()
+    for cat, keywords in CATEGORIES.items():
+        for kw in keywords:
+            if kw in n:
+                return cat
+    return None
+
+def parse_m3u(content):
+    channels = []
+    lines = content.splitlines()
+    current_name = None
+    current_logo = ""
+    for line in lines:
+        line = line.strip()
+        if line.startswith("#EXTINF:"):
+            logos = re.findall(r'tvg-logo="(.*?)"', line)
+            current_logo = logos[0] if logos else ""
+            if ',' in line:
+                current_name = line.rsplit(',', 1)[1].strip()
+            else:
+                current_name = None
+        elif line and not line.startswith("#") and current_name:
+            channels.append((current_name, current_logo, line))
             current_name = None
-            current_attrs = {}
+    return channels
+
+def parse_json(content):
+    channels = []
+    try:
+        data = json.loads(content)
+        if isinstance(data, list):
+            items = data
+        elif isinstance(data, dict):
+            items = data.get('channels', data.get('streams', data.get('data', [])))
+        else:
+            return channels
             
-            for line in lines:
-                line = line.strip()
-                if line.startswith("#EXTINF:"):
-                    current_attrs = dict(re.findall(r'(\S+)="(.*?)"', line))
-                    if ',' in line:
-                        current_name = line.rsplit(',', 1)[1].strip()
-                    else:
-                        current_name = None
-                elif line and not line.startswith("#") and current_name:
-                    url = line
-                    if url.startswith("http") and url not in seen_urls:
-                        seen_urls.add(url)
-                        
-                        name_lower = current_name.lower()
-                        assigned_cat = None
-                        for cat, keywords in categories.items():
-                            for kw in keywords:
-                                if kw in name_lower:
-                                    assigned_cat = cat
-                                    break
-                            if assigned_cat:
-                                break
-                                
-                        if assigned_cat:
-                            clean_name = re.sub(r'\s*\[.*?\]\s*', '', current_name)
-                            clean_name = re.sub(r'\s*\(.*?\)\s*', '', clean_name)
-                            clean_name = re.sub(r'\s*\b(HD|SD|HEVC|4K|UHD)\b\s*', '', clean_name, flags=re.I).strip()
-                            
-                            logo = current_attrs.get('tvg-logo', '')
-                            final_channels[assigned_cat].append((clean_name, logo, url))
-                            
-                    current_name = None
-                    current_attrs = {}
-                    
+        for item in items:
+            name = item.get('name') or item.get('title') or item.get('channel_name')
+            url = item.get('url') or item.get('stream') or item.get('link') or item.get('channel_url')
+            logo = item.get('logo') or item.get('icon') or item.get('stream_icon') or ""
+            if name and url:
+                channels.append((name, logo, url))
+    except Exception:
+        pass
+    return channels
+
+def main():
+    print("Starting robust playlist builder...")
+    final_channels = {cat: [] for cat in CATEGORIES.keys()}
+    seen_urls = set()
+
+    for src in SOURCES:
+        print(f"Fetching: {src}")
+        try:
+            resp = requests.get(src, timeout=15)
+            resp.raise_for_status()
+            content = resp.text
+            
+            if src.endswith('.json'):
+                parsed = parse_json(content)
+            else:
+                parsed = parse_m3u(content)
+                
+            added = 0
+            for name, logo, url in parsed:
+                url = url.strip()
+                if url.startswith("http") and url not in seen_urls:
+                    seen_urls.add(url)
+                    cat = get_category(name)
+                    if cat:
+                        clean = clean_name(name)
+                        final_channels[cat].append((clean, logo, url))
+                        added += 1
+            print(f"  -> Added {added} channels")
+            
         except Exception as e:
-            print(f"Error fetching {source_url}: {e}")
-            continue
-            
+            print(f"  -> ERROR: Skipped source due to network/parse error. Continuing...")
+
+    # Write M3U
     with open("master_playlist.m3u", "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
         for cat, channels in final_channels.items():
@@ -81,10 +133,11 @@ def main():
                 for name, logo, url in channels:
                     f.write(f'#EXTINF:-1 tvg-name="{name}" tvg-logo="{logo}" group-title="{cat}",{name}\n')
                     f.write(f'{url}\n')
-                    
+
     total = sum(len(v) for v in final_channels.values())
-    print(f"Success! Generated {total} channels.")
+    print(f"\nSUCCESS! Total Channels: {total}")
     
+    # Write README
     with open("README.md", "w", encoding="utf-8") as f:
         f.write("# Tamil IPTV Playlist\n\n")
         f.write(f"Total Channels: {total}\n\n")
