@@ -1,40 +1,104 @@
-import requests, re, time, json
-from collections import OrderedDict
+import requests
+import re
+import time
 
-OUTPUT_FILE = "master_playlist.m3u"
+def main():
+    try:
+        print("Starting playlist generation...")
+        
+        # Reliable sources that update daily
+        urls_to_fetch = [
+            "https://iptv-org.github.io/iptv/languages/tam.m3u",
+            "https://iptv-org.github.io/iptv/languages/eng.m3u"
+        ]
+        
+        # Your exact categories and keywords
+        categories = {
+            "Tamil Entertainment": ["sun tv", "star vijay", "zee tamil", "colors tamil", "kalaignar", "raj tv", "polimer", "mega tv", "vasanth", "puthuyugam", "captain", "adithya", "vendhar", "jaya tv", "d tamil", "maalai malar", "sirippoli"],
+            "Tamil News": ["sun news", "raj news", "thanthi", "puthiya thalaimurai", "news18 tamil", "polimer news", "news7", "news j", "kalaignar seithigal", "win news", "sathiyam", "madhimugam", "captain news", "lotus news"],
+            "Tamil Movies": ["ktv", "zee thirai", "sun life", "raj digital", "jaya movie", "mega movies", "vijay super", "raj movies", "kollywood", "tamil movies", "tamil cinemax"],
+            "Tamil Music": ["sun music", "raj musix", "isai aruvi", "jaya plus", "g music", "makkal tv", "jcv musix", "mega music", "isai music"],
+            "Tamil Kids": ["chutti tv", "chithiram", "cartoon network", "pogo", "discovery kids", "sony yay", "nick", "disney channel", "hungama", "kochu"],
+            "Tamil Devotional": ["angel tv", "sathya tv", "murugan tv", "jeevan tv", "aruloli", "shubhsandesh", "goodness", "nambikkai", "sanskar", "aastha"],
+            "Tamil Infotainment": ["discovery", "national geographic", "history tv", "animal planet", "bbc earth", "nat geo"],
+            "Tamil Shopping": ["home shop", "india shop", "dd kisan"],
+            "Sports": ["star sports", "sony ten", "eurosport", "dd sports", "sports", "cricket", "football", "tennis"]
+        }
+        
+        final_channels = {cat: [] for cat in categories.keys()}
+        seen_urls = set()
+        
+        for source_url in urls_to_fetch:
+            print(f"Fetching {source_url}...")
+            try:
+                response = requests.get(source_url, timeout=10)
+                response.raise_for_status()
+                lines = response.text.splitlines()
+                
+                current_name = None
+                current_attrs = {}
+                
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith("#EXTINF:"):
+                        current_attrs = dict(re.findall(r'(\S+)="(.*?)"', line))
+                        if ',' in line:
+                            current_name = line.rsplit(',', 1)[1].strip()
+                        else:
+                            current_name = None
+                    elif line and not line.startswith("#") and current_name:
+                        url = line
+                        if url.startswith("http") and url not in seen_urls:
+                            seen_urls.add(url)
+                            
+                            name_lower = current_name.lower()
+                            assigned_cat = None
+                            for cat, keywords in categories.items():
+                                for kw in keywords:
+                                    if kw in name_lower:
+                                        assigned_cat = cat
+                                        break
+                                if assigned_cat:
+                                    break
+                                    
+                            if assigned_cat:
+                                clean_name = re.sub(r'\s*\[.*?\]\s*', '', current_name)
+                                clean_name = re.sub(r'\s*\(.*?\)\s*', '', clean_name)
+                                clean_name = re.sub(r'\s*\b(HD|SD|HEVC|4K|UHD)\b\s*', '', clean_name, flags=re.I).strip()
+                                
+                                logo = current_attrs.get('tvg-logo', '')
+                                final_channels[assigned_cat].append((clean_name, logo, url))
+                                
+                        current_name = None
+                        current_attrs = {}
+                        
+            except Exception as e:
+                print(f"Error fetching {source_url}: {e}")
+                continue
+                
+        with open("master_playlist.m3u", "w", encoding="utf-8") as f:
+            f.write("#EXTM3U\n")
+            for cat, channels in final_channels.items():
+                if channels:
+                    f.write(f"\n# --- {cat} ---\n")
+                    for name, logo, url in channels:
+                        f.write(f'#EXTINF:-1 tvg-name="{name}" tvg-logo="{logo}" group-title="{cat}",{name}\n')
+                        f.write(f'{url}\n')
+                        
+        total = sum(len(v) for v in final_channels.values())
+        print(f"Success! Generated {total} channels.")
+        
+        with open("README.md", "w", encoding="utf-8") as f:
+            f.write("# Tamil IPTV Playlist\n\n")
+            f.write(f"Total Channels: {total}\n\n")
+            f.write("## Playlist URL\n")
+            f.write("https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u\n")
+            
+    except Exception as e:
+        print(f"Fatal error: {e}")
 
-# ==========================================
-# 1. GUARANTEED BASE CHANNELS (Never fails)
-# ==========================================
-BASE_CHANNELS = [
-    # Entertainment
-    ("Sun TV HD", "https://i.imgur.com/suntv.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=927", "Tamil Entertainment"),
-    ("Star Vijay HD", "https://i.imgur.com/vijay.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=924", "Tamil Entertainment"),
-    ("Zee Tamil HD", "https://i.imgur.com/zeetamil.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=610", "Tamil Entertainment"),
-    ("Colors Tamil HD", "https://i.imgur.com/colorstamil.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=742", "Tamil Entertainment"),
-    ("Kalaignar TV", "https://i.imgur.com/kalaignar.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=875", "Tamil Entertainment"),
-    ("Raj TV", "https://i.imgur.com/rajtv.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=1148", "Tamil Entertainment"),
-    ("Polimer TV", "https://i.imgur.com/polimer.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=787", "Tamil Entertainment"),
-    ("Mega TV", "https://i.imgur.com/mega.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=1007", "Tamil Entertainment"),
-    ("Vasanth TV", "https://i.imgur.com/vasanth.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=1007", "Tamil Entertainment"),
-    ("Puthuyugam TV", "https://i.imgur.com/puthuyugam.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=1104", "Tamil Entertainment"),
-    ("Captain TV", "https://i.imgur.com/captain.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=815", "Tamil Entertainment"),
-    ("Adithya TV", "https://i.imgur.com/adithya.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=1106", "Tamil Entertainment"),
-    ("Vendhar TV", "https://i.imgur.com/vendhar.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=1040", "Tamil Entertainment"),
-    ("Jaya TV", "https://i.imgur.com/jaya.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=767", "Tamil Entertainment"),
-    ("D Tamil", "https://i.imgur.com/dtamil.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=11788", "Tamil Entertainment"),
-    ("Maalai Malar", "https://i.imgur.com/maalai.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=1007", "Tamil Entertainment"),
-    ("Sirippoli", "https://i.imgur.com/sirippoli.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=1142", "Tamil Entertainment"),
-    # News
-    ("Sun News", "https://i.imgur.com/sunnews.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=676", "Tamil News"),
-    ("Raj News 24x7", "https://i.imgur.com/rajnews.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=618", "Tamil News"),
-    ("Thanthi TV", "https://i.imgur.com/thanthi.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=942", "Tamil News"),
-    ("Puthiya Thalaimurai", "https://i.imgur.com/puthiya.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=1104", "Tamil News"),
-    ("News18 Tamil Nadu", "https://i.imgur.com/news18.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=1096", "Tamil News"),
-    ("Polimer News", "https://i.imgur.com/polimernews.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=717", "Tamil News"),
-    ("News7 Tamil", "https://i.imgur.com/news7.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=826", "Tamil News"),
-    ("News J", "https://i.imgur.com/newsj.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=784", "Tamil News"),
-    ("Kalaignar Seithigal", "https://i.imgur.com/kalaignarseithigal.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=815", "Tamil News"),
+if __name__ == "__main__":
+    main()    ("Kalaignar Seithigal", "https://i.imgur.com/kalaignarseithigal.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=815", "Tamil News"),
     ("Win News", "https://i.imgur.com/winnews.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=838", "Tamil News"),
     ("Sathiyam TV", "https://i.imgur.com/sathiyam.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=951", "Tamil News"),
     ("Madhimugam TV", "https://i.imgur.com/madhimugam.png", "https://tatatvbysufiyan.pages.dev/tatatv.m3u8?id=9192", "Tamil News"),
