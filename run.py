@@ -4,7 +4,7 @@ import json
 import time
 
 # ==========================================
-# 1. ALL YOUR ORIGINAL SOURCES
+# 1. ALL YOUR SOURCES
 # ==========================================
 SOURCES = [
     "https://raw.githubusercontent.com/Vmfm/tamilvmtv/main/live/channels.m3u",
@@ -92,13 +92,54 @@ def parse_json(content):
         pass
     return channels
 
+def deep_stream_check(url, timeout=10):
+    """
+    Actually tests if the stream is alive by downloading the first bytes.
+    Prevents 2004 errors by ensuring it's not an HTML error page.
+    """
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        'Referer': url,
+        'Accept': '*/*'
+    }
+    try:
+        # GET request with stream=True to read bytes without downloading the whole file
+        response = requests.get(url, headers=headers, timeout=timeout, stream=True)
+        if response.status_code != 200:
+            return False
+            
+        # Read the first 1024 bytes
+        chunk = response.raw.read(1024, decode_content=True)
+        if not chunk:
+            return False
+            
+        # Decode to check for HTML error pages
+        text_chunk = chunk.decode('utf-8', errors='ignore')
+        
+        # If it starts with <, it's an HTML error page (404, 500, etc.)
+        if text_chunk.startswith('<'):
+            return False
+            
+        # If it starts with #EXTM3U, it's a valid HLS playlist
+        if text_chunk.startswith('#EXTM3U'):
+            return True
+            
+        # If it's binary data (like a TS stream), it's likely valid
+        return True
+        
+    except Exception:
+        return False
+
 def main():
-    print("Starting robust playlist builder...")
+    print("Starting DEEP VALIDATION playlist builder...")
+    print("Note: This will take 5-10 minutes to thoroughly test every stream.")
+    
     final_channels = {cat: [] for cat in CATEGORIES.keys()}
     seen_urls = set()
+    checked_count = 0
 
     for src in SOURCES:
-        print(f"Fetching: {src}")
+        print(f"\nFetching: {src}")
         try:
             resp = requests.get(src, timeout=15)
             resp.raise_for_status()
@@ -109,20 +150,30 @@ def main():
             else:
                 parsed = parse_m3u(content)
                 
+            print(f"  Found {len(parsed)} raw channels. Testing streams...")
             added = 0
+            
             for name, logo, url in parsed:
                 url = url.strip()
                 if url.startswith("http") and url not in seen_urls:
                     seen_urls.add(url)
-                    cat = get_category(name)
-                    if cat:
-                        clean = clean_name(name)
-                        final_channels[cat].append((clean, logo, url))
-                        added += 1
-            print(f"  -> Added {added} channels")
+                    checked_count += 1
+                    
+                    # THE DEEP CHECK
+                    if deep_stream_check(url):
+                        cat = get_category(name)
+                        if cat:
+                            clean = clean_name(name)
+                            final_channels[cat].append((clean, logo, url))
+                            added += 1
+                            
+                    if checked_count % 20 == 0:
+                        print(f"  -> Tested {checked_count} streams so far...")
+                        
+            print(f"  -> Successfully added {added} LIVE channels from this source.")
             
         except Exception as e:
-            print(f"  -> ERROR: Skipped source due to network/parse error. Continuing...")
+            print(f"  -> ERROR: Skipped source. Continuing...")
 
     # Write M3U
     with open("master_playlist.m3u", "w", encoding="utf-8") as f:
@@ -135,12 +186,12 @@ def main():
                     f.write(f'{url}\n')
 
     total = sum(len(v) for v in final_channels.values())
-    print(f"\nSUCCESS! Total Channels: {total}")
+    print(f"\nSUCCESS! Total LIVE Channels: {total}")
     
     # Write README
     with open("README.md", "w", encoding="utf-8") as f:
         f.write("# Tamil IPTV Playlist\n\n")
-        f.write(f"Total Channels: {total}\n\n")
+        f.write(f"Total LIVE Channels: {total}\n\n")
         f.write("## Playlist URL\n")
         f.write("https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u\n")
 
