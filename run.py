@@ -1,8 +1,8 @@
 import requests
 import re
 import json
-import time
 import datetime
+import concurrent.futures
 
 # ==========================================
 # 1. ALL YOUR SOURCES
@@ -25,7 +25,7 @@ SOURCES = [
 ]
 
 # ==========================================
-# 2. BLOCKED LANGUAGES (Non-Tamil/English)
+# 2. BLOCKED LANGUAGES & CATEGORIES
 # ==========================================
 BLOCKED_LANGUAGES = [
     "telugu", "kannada", "malayalam", "hindi", "bangla", "bengali", 
@@ -34,61 +34,26 @@ BLOCKED_LANGUAGES = [
     "chinese", "japanese", "korean", "arabic", "indonesian"
 ]
 
-# ==========================================
-# 3. CATEGORIES (Ordered by priority)
-# ==========================================
 CATEGORIES = {
-    "Tamil News": [
-        "sun news", "raj news", "thanthi", "puthiya thalaimurai", 
-        "news18 tamil", "polimer news", "news7", "news j", 
-        "kalaignar seithigal", "win news", "sathiyam", "madhimugam", 
-        "captain news", "lotus news", "dina thanthi", "nakkheeran",
-        "zee tamil news", "kalaignar murasu"
-    ],
-    "Tamil Kids": [
-        "chutti tv", "chithiram", "cartoon network tamil", "pogo tamil", 
-        "discovery kids tamil", "sony yay tamil", "nick tamil", 
-        "disney channel tamil", "hungama tamil", "kochu tv", "chutti"
-    ],
-    "Tamil Movies": [
-        "ktv", "zee thirai", "sun life", "raj digital plus", 
-        "jaya movie", "mega movies", "vijay super", "raj movies", 
-        "kollywood", "tamil movies", "tamil cinemax"
-    ],
-    "Tamil Music": [
-        "sun music", "raj musix", "isai aruvi", "jaya plus", 
-        "g music", "makkal tv music", "ktv music", "jcv musix", 
-        "mega music", "isai music"
-    ],
-    "Tamil Devotional": [
-        "angel tv", "sathya tv", "murugan tv", "jeevan tv", 
-        "aruloli", "shubhsandesh", "goodness", "nambikkai", 
-        "sanskar tamil", "aastha tamil"
-    ],
-    "Tamil Infotainment": [
-        "discovery tamil", "national geographic tamil", 
-        "history tv18 tamil", "animal planet tamil", "bbc earth tamil", 
-        "nat geo tamil", "discovery science tamil", "nat geo wild tamil", 
-        "discovery turbo tamil"
-    ],
-    "Tamil Shopping": [
-        "home shop tamil", "india shop tamil", "dd kisan tamil",
-        "home shop", "india shop", "dd kisan"
-    ],
-    "Sports": [
-        "star sports", "sony ten", "eurosport", "dd sports", 
-        "sports", "cricket", "football", "tennis"
-    ],
-    "Tamil Entertainment": [
-        "sun tv", "star vijay", "zee tamil", "colors tamil", 
-        "kalaignar tv", "raj tv", "polimer tv", "mega tv", 
-        "vasanth tv", "puthuyugam", "captain tv", "adithya tv", 
-        "vendhar tv", "jaya tv", "d tamil", "maalai malar", "sirippoli", "vijay tv"
-    ]
+    # TAMIL CATEGORIES (Must check these first!)
+    "Tamil News": ["sun news", "raj news", "thanthi", "puthiya thalaimurai", "news18 tamil", "polimer news", "news7", "news j", "kalaignar seithigal", "win news", "sathiyam", "madhimugam", "captain news", "dina thanthi", "nakkheeran", "lotus news"],
+    "Tamil Sports": ["star sports 1 tamil", "star sports 2 tamil", "star sports 3 tamil", "sony ten 1 tamil", "sony ten 2 tamil", "sony ten 3 tamil", "eurosport tamil", "dd sports tamil", "star sports tamil", "sony ten tamil"],
+    "Tamil Movies": ["ktv", "zee thirai", "sun life", "raj digital plus", "jaya movie", "mega movies", "vijay super", "raj movies", "kollywood", "tamil movies", "tamil cinemax"],
+    "Tamil Music": ["sun music", "raj musix", "isai aruvi", "jaya plus", "g music", "makkal tv", "ktv music", "jcv musix", "tamil music", "mega music", "isai music"],
+    "Tamil Kids": ["chutti tv", "chithiram", "cartoon network tamil", "pogo tamil", "discovery kids tamil", "sony yay tamil", "nick tamil", "disney channel tamil", "hungama", "kochu tv", "chutti"],
+    "Tamil Devotional": ["angel tv", "sathya tv", "murugan tv", "jeevan tv", "aruloli", "shubhsandesh", "goodness", "nambikkai", "sanskar", "aastha tamil"],
+    "Tamil Infotainment": ["discovery channel tamil", "national geographic tamil", "history tv18 tamil", "animal planet tamil", "sony bbc earth tamil", "discovery science tamil", "nat geo wild tamil", "discovery turbo tamil", "discovery tamil"],
+    "Tamil Shopping": ["home shop", "india shop", "dd kisan"],
+    "Tamil Entertainment": ["sun tv", "star vijay", "zee tamil", "colors tamil", "kalaignar", "raj tv", "polimer tv", "mega tv", "vasanth", "puthuyugam", "captain tv", "adithya", "vendhar", "jaya tv", "d tamil", "maalai malar", "sirippoli", "vijay tv"],
+
+    # ENGLISH CATEGORIES (Specific keywords only to prevent grabbing 3000 junk channels)
+    "English News": ["bbc news", "cnn", "al jazeera", "sky news", "fox news", "msnbc", "cnbc", "bloomberg", "wion", "republic tv", "india today", "ndtv 24x7", "times now", "cnn news18"],
+    "English Movies": ["hbo", "star movies", "sony pix", "mnx", "movies now", "romedy now", "wb", "zee cafe", "colors infinity", "star world"],
+    "English Sports": ["star sports", "sony ten", "eurosport", "ten sports", "sky sports", "bt sport", "espn", "bein sports", "super sport", "willow tv", "dd sports"]
 }
 
 # ==========================================
-# 4. CORE FUNCTIONS
+# 3. CORE FUNCTIONS
 # ==========================================
 def clean_name(name):
     name = re.sub(r'\s*\[.*?\]\s*', '', name)
@@ -98,36 +63,25 @@ def clean_name(name):
 
 def is_blocked_language(name):
     n = name.lower()
-    for lang in BLOCKED_LANGUAGES:
-        if lang in n:
-            return True
-    return False
+    return any(lang in n for lang in BLOCKED_LANGUAGES)
 
 def get_category(name):
+    if not name or is_blocked_language(name): return None
     n = name.lower()
-    if is_blocked_language(name):
-        return None
-        
     for cat, keywords in CATEGORIES.items():
-        for kw in keywords:
-            if kw in n:
-                return cat
+        if any(kw in n for kw in keywords): return cat
     return None
 
 def parse_m3u(content):
     channels = []
     lines = content.splitlines()
-    current_name = None
-    current_logo = ""
+    current_name, current_logo = None, ""
     for line in lines:
         line = line.strip()
         if line.startswith("#EXTINF:"):
             logos = re.findall(r'tvg-logo="(.*?)"', line)
             current_logo = logos[0] if logos else ""
-            if ',' in line:
-                current_name = line.rsplit(',', 1)[1].strip()
-            else:
-                current_name = None
+            current_name = line.rsplit(',', 1)[1].strip() if ',' in line else None
         elif line and not line.startswith("#") and current_name:
             channels.append((current_name, current_logo, line))
             current_name = None
@@ -137,105 +91,86 @@ def parse_json(content):
     channels = []
     try:
         data = json.loads(content)
-        if isinstance(data, list):
-            items = data
-        elif isinstance(data, dict):
-            items = data.get('channels', data.get('streams', data.get('data', [])))
-        else:
-            return channels
-            
+        items = data if isinstance(data, list) else data.get('channels', data.get('streams', data.get('data', [])))
         for item in items:
             name = item.get('name') or item.get('title') or item.get('channel_name')
             url = item.get('url') or item.get('stream') or item.get('link') or item.get('channel_url')
             logo = item.get('logo') or item.get('icon') or item.get('stream_icon') or ""
-            if name and url:
-                channels.append((name, logo, url))
-    except Exception:
-        pass
+            if name and url: channels.append((name, logo, url))
+    except Exception: pass
     return channels
 
-def deep_stream_check(url, timeout=10):
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
-        'Referer': url,
-        'Accept': '*/*'
-    }
+def deep_stream_check(item):
+    """Uses a strict 3-second connection and 5-second read timeout to completely prevent hanging."""
+    name, logo, url, cat, clean = item
+    headers = {'User-Agent': 'VLC/3.0.9 LibVLC/3.0.9'}
     try:
-        response = requests.get(url, headers=headers, timeout=timeout, stream=True)
-        if response.status_code != 200:
-            return False
-            
-        chunk = response.raw.read(1024, decode_content=True)
-        if not chunk:
-            return False
-            
-        text_chunk = chunk.decode('utf-8', errors='ignore')
-        
-        # HTML error pages masking as HTTP 200
-        if text_chunk.startswith('<'):
-            return False
-            
-        return True
+        # Tuple Timeout: (Connect Timeout, Read Timeout)
+        response = requests.get(url, headers=headers, timeout=(3.0, 5.0), stream=True)
+        if response.status_code == 200:
+            # Read a tiny 256 byte chunk just to verify it isn't an HTML error page
+            chunk = response.raw.read(256, decode_content=True).decode('utf-8', errors='ignore')
+            if not chunk.strip().startswith('<'):  
+                return item
     except Exception:
-        return False
+        pass
+    return None
 
 # ==========================================
-# 5. MAIN EXECUTION
+# 4. MAIN EXECUTION
 # ==========================================
 def main():
-    print("Starting DEEP VALIDATION playlist builder...")
-    print("Note: This will take a few minutes to thoroughly test every stream.")
+    print("Starting HYPER-FAST Playlist Builder...")
     
     final_channels = {cat: [] for cat in CATEGORIES.keys()}
-    seen_urls = set()
-    seen_names = set()
-    checked_count = 0
+    seen_urls = set()  # Only filtering Duplicate URLs, multiple identical Channel Names are allowed!
+    total_added = 0
 
     for src in SOURCES:
         print(f"\nFetching: {src}")
         try:
             resp = requests.get(src, timeout=15)
             resp.raise_for_status()
-            content = resp.text
+            parsed = parse_json(resp.text) if src.endswith('.json') else parse_m3u(resp.text)
             
-            if src.endswith('.json'):
-                parsed = parse_json(content)
-            else:
-                parsed = parse_m3u(content)
-                
-            print(f"  Found {len(parsed)} raw channels. Testing streams...")
-            added = 0
-            blocked = 0
-            
+            # 1. FILTER FIRST (Super Fast)
+            to_check = []
             for name, logo, url in parsed:
                 url = url.strip()
-                if url.startswith("http") and url not in seen_urls:
-                    seen_urls.add(url)
-                    checked_count += 1
-                    
-                    if deep_stream_check(url):
-                        cat = get_category(name)
-                        if cat:
-                            clean = clean_name(name)
-                            name_key = clean.lower()
-                            
-                            if name_key not in seen_names:
-                                seen_names.add(name_key)
-                                final_channels[cat].append((clean, logo, url))
-                                added += 1
-                        else:
-                            blocked += 1
-                            
-                    if checked_count % 50 == 0:
-                        print(f"  -> Tested {checked_count} unique streams globally so far...")
-                        
-            print(f"  -> Added {added} live channels, Blocked {blocked} (wrong language/category).")
+                if not url.startswith("http") or url in seen_urls: continue
+                
+                cat = get_category(name)
+                if not cat: continue  # Skip invalid/blocked channels immediately
+                
+                clean = clean_name(name)
+                
+                to_check.append((name, logo, url, cat, clean))
+                seen_urls.add(url)
+
+            if not to_check:
+                print("  -> No matching channels found in this source.")
+                continue
+                
+            print(f"  -> Found {len(to_check)} potential channels. Testing streams (50 at a time)...")
+            
+            # 2. CHECK MULTITHREADED (50 concurrent connections to blast through the checks)
+            added_this_src = 0
+            with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+                results = executor.map(deep_stream_check, to_check)
+                for res in results:
+                    if res:
+                        # Append the original name to allow duplicate channel backups
+                        final_channels[res[3]].append((res[0], res[1], res[2]))
+                        added_this_src += 1
+                        total_added += 1
+            
+            print(f"  -> {added_this_src} channels are LIVE and added.")
             
         except Exception as e:
-            print(f"  -> ERROR: Skipped source. Continuing...")
+            print(f"  -> ERROR: Skipped source.")
 
     # ==========================================
-    # 6. FILE GENERATION
+    # 5. FILE GENERATION
     # ==========================================
     print("\nWriting master_playlist.m3u...")
     with open("master_playlist.m3u", "w", encoding="utf-8") as f:
@@ -244,30 +179,19 @@ def main():
             if channels:
                 f.write(f"\n# --- {cat} ---\n")
                 for name, logo, url in channels:
-                    f.write(f'#EXTINF:-1 tvg-name="{name}" tvg-logo="{logo}" group-title="{cat}",{name}\n')
-                    f.write(f'{url}\n')
+                    f.write(f'#EXTINF:-1 tvg-name="{name}" tvg-logo="{logo}" group-title="{cat}",{name}\n{url}\n')
 
-    total = sum(len(v) for v in final_channels.values())
-    print(f"\n✅ SUCCESS! Total LIVE Channels: {total}")
-    for cat, channels in final_channels.items():
-        if channels:
-            print(f"  {cat}: {len(channels)}")
+    print(f"\n✅ SUCCESS! Total LIVE Channels: {total_added}")
     
-    print("\nWriting README.md...")
     timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     with open("README.md", "w", encoding="utf-8") as f:
         f.write("# Tamil IPTV Playlist\n\n")
         f.write("This playlist is automatically checked, filtered, and updated every 3 hours.\n\n")
-        f.write(f"**Total LIVE Channels:** {total}\n")
-        f.write(f"**Last Updated:** {timestamp}\n\n")
-        f.write("## 📥 Playlist URL\n")
-        f.write("Copy and paste this link into your IPTV Player (VLC, TiViMate, etc.):\n")
-        f.write("```\n[https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u](https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u)\n```\n\n")
-        f.write("## 📊 Channel Breakdown\n")
-        f.write("| Category | Count |\n|---|---|\n")
+        f.write(f"**Total LIVE Channels:** {total_added}\n**Last Updated:** {timestamp}\n\n")
+        f.write("## 📥 Playlist URL\n```\n[https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u](https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u)\n```\n\n")
+        f.write("## 📊 Channel Breakdown\n| Category | Count |\n|---|---|\n")
         for cat, channels in final_channels.items():
-            if channels:
-                f.write(f"| {cat} | {len(channels)} |\n")
+            if channels: f.write(f"| {cat} | {len(channels)} |\n")
 
 if __name__ == "__main__":
     main()
