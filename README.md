@@ -2,8 +2,8 @@
 
 This playlist is automatically checked, filtered, and updated every 3 hours.
 
-**Total LIVE Channels:** 109
-**Last Updated:** 2026-07-04 08:49:18 UTC
+**Total LIVE Channels:** 108
+**Last Updated:** 2026-07-04 13:10:45 UTC
 
 ## 📥 Playlist URL
 Copy and paste this link into your IPTV Player (VLC, TiViMate, etc.):
@@ -21,4 +21,4 @@ Copy and paste this link into your IPTV Player (VLC, TiViMate, etc.):
 | Tamil Devotional | 15 |
 | Tamil Shopping | 1 |
 | Sports | 40 |
-| Tamil Entertainment | 16 |
+| Tamil Entertainment | 15 |
