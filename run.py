@@ -5,7 +5,210 @@ import datetime
 import concurrent.futures
 
 # ==========================================
-# 1. ALL YOUR SOURCES
+# 1. USER'S CUSTOM HARDCODED CHANNELS
+# ==========================================
+# These channels bypass the strict dictionary filter and are directly injected!
+USER_CUSTOM_CHANNELS = """
+#EXTINF:-1 group-title="local channels",Sana TV
+https://galaxyott.live/hls/sanatv.m3u8
+#EXTINF:-1 group-title="local channels",Sana Plus
+https://galaxyott.live/hls/sanaplus.m3u8
+#EXTINF:-1 group-title="local channels",UTV
+https://stream.galaxyott.live/live/utv/index.m3u8
+#EXTINF:-1 group-title="local channels",NTV
+https://galaxyott.live/hls/ntv.m3u8
+#EXTINF:-1 group-title="local channels",Surya TV
+https://galaxyott.live/hls/suryatv.m3u8
+#EXTINF:-1 group-title="local channels",Subin TV
+https://stream.galaxyott.live/live/subintv/index.m3u8
+#EXTINF:-1 group-title="local channels",Moon TV
+https://live.maxtn.in/moontv/moontv/index.m3u8
+#EXTINF:-1 group-title="local channels",Sakthi TV
+https://live.sscloud7.in/live/sakthitv/index.m3u8
+#EXTINF:-1 group-title="local channels",Prime TV
+https://live.applelive.in/primetv/primetv/index.m3u8
+#EXTINF:-1 group-title="local channels",D TV
+https://stream.d6-pro.com/Dtv/live/index.m3u8
+#EXTINF:-1 group-title="local channels",TDN
+https://live.maxtn.in/tdn/tdn/index.m3u8
+#EXTINF:-1 group-title="local channels",7 Green
+https://account33.livebox.co.in/7GREEN4Khls/live.m3u8
+#EXTINF:-1 group-title="local channels",Yet TV
+https://live.yettelevision.com:5443/LiveApp/streams/yettv.m3u8
+#EXTINF:-1 group-title="local channels",PR TV
+https://play.applelive.in/prtv/prtv.m3u8
+#EXTINF:-1 group-title="local channels",Riya TV
+https://play.applelive.in/riyatv/riyatv.m3u8
+#EXTINF:-1 group-title="local channels",Dark TV
+https://play.applelive.in/darktv/darktv.m3u8
+#EXTINF:-1 group-title="local channels",Harin TV HD
+https://ipcloud.live/harintv/harintvhd/index.m3u8
+#EXTINF:-1 group-title="local channels",Phoenix TV
+https://stream.onecloudlive.in/phoenixtv/phoenixtv/index.m3u8
+#EXTINF:-1 group-title="local channels",Roja TV
+https://live.rojatv.cloud/rojatv/rojatv/index.m3u8
+#EXTINF:-1 group-title="local channels",Roja TV
+https://stream.rojatv.cloud/rojatv/rojatv/index.m3u8
+#EXTINF:-1 group-title="local channels",Nila TV
+https://live.olidigital.in/nilatv/nilatv/index.m3u8
+#EXTINF:-1 group-title="local channels",SMCV TV
+https://singamcloud.in/smcvtv/smcvtv/index.m3u8
+#EXTINF:-1 group-title="local channels",APS TV
+https://apstv-a1.tamilstream.in/apstv/apstv/index.m3u8
+#EXTINF:-1 group-title="local channels",APS Gold
+https://apsgold-a1.tamilstream.in/apsgold/apsgold/index.m3u8
+#EXTINF:-1 group-title="local channels",MTV Men HD
+https://ipcloud.live/mtv/menhd/index.m3u8
+#EXTINF:-1 group-title="local channels",MSN TV
+https://ipcloud.live/msntv/msntv/index.m3u8
+#EXTINF:-1 group-title="local channels",Veerali TV
+https://ipcloud.live/veerali/veeralitv/index.m3u8
+#EXTINF:-1 group-title="local channels",Three Star TV HD
+https://stream.onecloudlive.in/threestartv/threestarhd/index.m3u8
+#EXTINF:-1 group-title="local channels",Shalini TV
+https://ipcloud.live/shalinitv/shalinitv/index.m3u8
+#EXTINF:-1 group-title="local channels",JCV TV
+https://play.applelive.in/jcvtv/jcvtv.m3u8
+#EXTINF:-1 group-title="local channels",JCV Musix
+https://play.applelive.in/jcvtv/jcvmusix.m3u8
+#EXTINF:-1 group-title="local channels",Thendral TV
+https://live.thendralcloud.in/thendraltv/d0dbe915091d400bd8ee7f27f0791303.sdp/chunks.m3u8
+#EXTINF:-1 group-title="local channels",Anbu TV HD
+https://ipcloud.live/anbutv/anbutvhd/index.m3u8
+#EXTINF:-1 group-title="local channels",Nellai TV
+https://stream.onecloudlive.in/nellaitv/nellaitv/index.m3u8
+#EXTINF:-1 group-title="local channels",A3e0b02f
+https://app.ashokadigital.net/app/a3e0b02f/index.m3u8
+#EXTINF:-1 group-title="local channels",Akash TV
+https://account2.livebox.co.in/AkashTvhls/live.m3u8
+#EXTINF:-1 group-title="local channels",Apple TV
+https://play.applelive.in/appletv/appletv.m3u8
+#EXTINF:-1 group-title="local channels",Jeyson TV
+https://play.applelive.in/jeysontv/jeysontv.m3u8
+#EXTINF:-1 group-title="local channels",JJ Max
+https://play.applelive.in/jjmax/jjmax.m3u8
+#EXTINF:-1 group-title="local channels",JC TV
+https://play.applelive.in/jctv/jctv.m3u8
+#EXTINF:-1 group-title="local channels",Digital TV
+https://play.applelive.in/digitaltv/digitaltv.m3u8
+#EXTINF:-1 group-title="local channels",Oscar TV
+https://account21.livebox.co.in/oscartvhls/live.m3u8
+#EXTINF:-1 group-title="local channels",Jeyan TV
+https://stream.onecloudlive.in/jeyantv/jeyantv/index.m3u8
+#EXTINF:-1 group-title="local channels",Vidyal TV
+https://account11.livebox.co.in/vidyaltvhls/live.m3u8?psk=stream
+#EXTINF:-1 group-title="local channels",KCN TV
+https://view.rcserver.in/tmp_hls12/kcntv/index.m3u8
+#EXTINF:-1 group-title="local channels",Sky TV
+https://sscloud7.com/live/skytv/index.m3u8
+#EXTINF:-1 group-title="local channels",Boys TV
+https://rtmp.applelive.in/boystv/boystv/index.m3u8
+#EXTINF:-1 group-title="local channels",King TV
+https://server.sscloud7.in/kingtv/kingtv/index.m3u8
+#EXTINF:-1 group-title="local channels",Sky TV
+https://view.rcserver.in/tmp_hls6/skytv/index.m3u8
+#EXTINF:-1 group-title="local channels",Udhayam TV
+https://view.rcserver.in/tmp_hls8/udhayamtv/index.m3u8
+#EXTINF:-1 group-title="local channels",TN TV
+https://view.rcserver.in/tmp_hls14/tntv/index.m3u8
+#EXTINF:-1 group-title="local channels",Senthamil TV
+https://view.rcserver.in/tmp_hls24/senthamiltv/index.m3u8
+#EXTINF:-1 group-title="local channels",Karur TV
+https://view.rcserver.in/tmp_hls16/karurtv/index.m3u8
+#EXTINF:-1 group-title="local channels",Karur City
+https://view.rcserver.in/tmp_hls17/karurcity/index.m3u8
+#EXTINF:-1 group-title="local channels",Tmp Hls20
+https://view.rcserver.in/tmp_hls20/index.m3u8
+#EXTINF:-1 group-title="local channels",Thirai TV
+https://view.apserver.in/tmp_hls2/thiraitv/index.m3u8
+#EXTINF:-1 group-title="local channels",Bharathi TV
+https://server.sscloud7.in/live/bharathitv/index.m3u8
+#EXTINF:-1 group-title="local channels",Thendral TV
+https://sscloud7.com/live/thendraltv/index.m3u8
+#EXTINF:-1 group-title="local channels",Irattipaathai TV
+https://account31.livebox.co.in/IRATTAIPAATHAITVhls/live.m3u8
+#EXTINF:-1 group-title="local channels",MCN TV
+https://play.applelive.in/mcntv/mcntv.m3u8
+#EXTINF:-1 group-title="local channels",STN TV
+https://play.applelive.in/stntv/stntv.m3u8
+#EXTINF:-1 group-title="local channels",Suriyan TV
+https://view.rcserver.in/tmp_hls9/suriyantv/index.m3u8
+#EXTINF:-1 group-title="local channels",Vasanth TV
+https://play.applelive.in/vasanthtv/vasanthtv.m3u8
+#EXTINF:-1 group-title="local channels",Eesan TV
+https://live.singamcloud.in/eesantv/eesantv/index.m3u8
+#EXTINF:-1 group-title="local channels",68b001a0
+https://app.ashokadigital.net/app/68b001a0/index.m3u8
+#EXTINF:-1 group-title="local channels",Jeyam TV
+https://live.sscloud7.in/live/jeyamtv/index.m3u8
+#EXTINF:-1 group-title="local channels",Aadhavan TV Colours
+https://live.olidigital.in/aadhavantvcolours/aadhavantvcolours/index.m3u8
+#EXTINF:-1 group-title="local channels",Solai TV HD
+https://ipcloud.live/solaitv/solaihd/index.m3u8
+#EXTINF:-1 group-title="local channels",MM TV Jeyam Plus
+https://ipcloud.live/mmtv/jeyamplus/index.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",chithiram tv
+https://cdn-6.pishow.tv/live/1243/master.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",dd tamil
+https://d2lk5u59tns74c.cloudfront.net/out/v1/abf46b14847e45499f4a47f3a9afe93d/index.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",EET Live EET TV
+https://eu.streamjo.com/eetlive/eettv.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",EET Live EET TV
+https://live.streamjo.com/eetlive/eettv.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Isaiaruvi
+https://segment.yuppcdn.net/140622/isaiaruvi/playlist.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Murasu
+https://segment.yuppcdn.net/050522/murasu/playlist.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Kalaignar TV
+https://segment.yuppcdn.net/240122/kalaignartv/playlist.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",mathimugam
+https://cdn-3.pishow.tv/live/1476/master.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Makkal
+https://5k8q87azdy4v-hls-live.wmncdn.net/MAKKAL/271ddf829afeece44d8732757fba1a66.sdp/playlist.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",malai murasu
+https://cdn-3.pishow.tv/live/1606/master.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",News7
+https://segment.yuppcdn.net/240122/news7/playlist.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",News18 Tamil Nadu NW18
+https://n18syndication.akamaized.net/bpk-tv/News18_Tamil_Nadu_NW18_MOB/output01/master.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",news j
+https://cdn-3.pishow.tv/live/1279/master.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Polimer News
+https://segment.yuppcdn.net/110322/polimernews/playlist.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",polimer tv
+https://cdn-2.pishow.tv/live/1241/master.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Puthiya
+https://segment.yuppcdn.net/240122/puthiya/playlist.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",raj tv
+https://d3qs3d2rkhfqrt.cloudfront.net/out/v1/2839e3d1e0f84a2e821c1708d5fdfdf0/index.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Roja TV
+https://stream.rojatv.cloud/rojatv/rojatv/index.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Roja TV
+https://live.rojatv.cloud/rojatv/rojatv/index.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Sana Plus
+https://galaxyott.live/hls/sanaplus.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Sana TV
+https://galaxyott.live/hls/sanatv.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Siripoli
+https://segment.yuppcdn.net/240122/siripoli/playlist.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Subin TV
+https://stream.galaxyott.live/live/subintv/index.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Zionmediait 97484f5ce6da96e496a9b87c439835d0
+https://cdn.zionmediait.com/zionmediaitserver2024/97484f5ce6da96e496a9b87c439835d0.sdp/playlist.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Thalaa TV TAM
+https://streams2.sofast.tv/ptnr-yupptv/title-THALAA-TV-TAM_yupptv/v1/master/611d79b11b77e2f571934fd80ca1413453772ac7/2069c593-3c07-4d62-9d44-746be5c3a5d6/manifest.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",thanthi tv
+https://cdn-3.pishow.tv/live/1612/master.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",Thendral TV
+https://live.thendralcloud.in/thendraltv/d0dbe915091d400bd8ee7f27f0791303.sdp/chunks.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",vendhar tv
+https://cdn-3.pishow.tv/live/1271/master.m3u8
+#EXTINF:-1 group-title="tamil iptv channels",win news
+https://cdn-4.pishow.tv/live/1531/master.m3u8
+"""
+
+# ==========================================
+# 2. ALL YOUR SOURCES
 # ==========================================
 SOURCES = [
     "https://raw.githubusercontent.com/Vmfm/tamilvmtv/main/live/channels.m3u",
@@ -25,7 +228,6 @@ SOURCES = [
     "https://iptv-org.github.io/iptv/languages/eng.m3u"
 ]
 
-# The ONLY sources allowed to provide Tamil Local Channels
 LOCAL_SOURCES = [
     "https://raw.githubusercontent.com/Vmfm/tamilvmtv/main/live/channels.m3u",
     "https://raw.githubusercontent.com/amazeyourself/m3u/main/ashokadigital.m3u",
@@ -33,12 +235,13 @@ LOCAL_SOURCES = [
 ]
 
 # ==========================================
-# 2. STRICT CATEGORY WHITELIST
+# 3. STRICT CATEGORY WHITELIST
 # ==========================================
-# If a channel name does not match these keywords, it is INSTANTLY DROPPED.
-# This prevents testing Hindi, Telugu, or junk channels, saving immense time.
-
 CATEGORIES = {
+    # ---------------- USER CUSTOM CATEGORIES ----------------
+    "local channels": [], 
+    "tamil iptv channels": [],
+    
     # ---------------- TAMIL ----------------
     "Tamil GEC": ["sun tv", "star vijay", "vijay tv", "zee tamil", "colors tamil", "kalaignar tv", "kalaignar", "jaya tv", "raj tv", "polimer tv", "makkal tv", "vasanth tv", "vasanth", "puthuyugam tv", "puthuyugam", "mega tv", "captain tv", "vendhar tv", "vendhar"],
     "Tamil Movies": ["ktv", "star vijay super", "vijay super", "zee thirai", "j movie", "jaya movie", "raj digital plus", "murasu", "mega 24", "sun action"],
@@ -67,42 +270,47 @@ CATEGORIES = {
 }
 
 # ==========================================
-# 3. CORE FUNCTIONS
+# 4. CORE FUNCTIONS
 # ==========================================
 def clean_name(name):
-    """Removes junk tags for a cleaner display name."""
     name = re.sub(r'\s*\[.*?\]\s*', '', name)
     name = re.sub(r'\s*\(.*?\)\s*', '', name)
     return ' '.join(name.split()).strip()
 
 def normalize_name(name):
-    """Creates a pure string to perfectly catch duplicates (e.g. 'Sun TV HD' -> 'suntv')."""
     name = re.sub(r'\b(HD|SD|FHD|4K|UHD)\b', '', name, flags=re.I)
     name = re.sub(r'[^a-zA-Z0-9]', '', name)
     return name.lower()
 
 def get_category(name):
-    """STRICT WHITELIST CHECK: Only returns a category if the exact channel keyword is found."""
     if not name: return None
     n = name.lower()
     for cat, keywords in CATEGORIES.items():
         if any(kw in n for kw in keywords): 
             return cat
-    return None  # Rejects non-matching channels instantly
+    return None
 
 def parse_m3u(content):
     channels = []
     lines = content.splitlines()
-    current_name, current_logo = None, ""
+    current_name, current_logo, current_cat = None, "", None
     for line in lines:
         line = line.strip()
         if line.startswith("#EXTINF:"):
+            # Grab logo
             logos = re.findall(r'tvg-logo="(.*?)"', line)
             current_logo = logos[0] if logos else ""
+            
+            # Grab specific group-title if present (used for Custom Channels)
+            cats = re.findall(r'group-title="(.*?)"', line)
+            current_cat = cats[0] if cats else None
+            
+            # Grab name
             current_name = line.rsplit(',', 1)[1].strip() if ',' in line else None
         elif line and not line.startswith("#") and current_name:
-            channels.append((current_name, current_logo, line))
+            channels.append((current_name, current_logo, line, current_cat))
             current_name = None
+            current_cat = None
     return channels
 
 def parse_json(content):
@@ -114,19 +322,18 @@ def parse_json(content):
             name = item.get('name') or item.get('title') or item.get('channel_name')
             url = item.get('url') or item.get('stream') or item.get('link') or item.get('channel_url')
             logo = item.get('logo') or item.get('icon') or item.get('stream_icon') or ""
-            if name and url: channels.append((name, logo, url))
+            if name and url: channels.append((name, logo, url, None))
     except Exception: pass
     return channels
 
 def deep_stream_check(item):
-    """
-    Validates stream health:
-    - Strict 6.0s timeout.
-    - Checks 1024 bytes to drop fake HTML error pages.
-    """
     orig_name, logo, url, cat, norm_name = item
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     
+    # Local Channels bypass timeout check
+    if "local" in cat.lower():
+        return item
+        
     try:
         response = requests.get(url, headers=headers, timeout=6.0, stream=True)
         if response.status_code == 200:
@@ -136,11 +343,9 @@ def deep_stream_check(item):
                 
             text_chunk = chunk.decode('utf-8', errors='ignore').lower()
             
-            # Reject HTML error pages masking as 200 OK
             if '<html' in text_chunk or '<!doctype' in text_chunk:
                 return None
                 
-            # Strict validation for .m3u8 files
             if '.m3u8' in url.lower():
                 if '#extm3u' not in text_chunk and '#ext-x' not in text_chunk:
                     return None
@@ -151,84 +356,92 @@ def deep_stream_check(item):
     return None
 
 # ==========================================
-# 4. MAIN EXECUTION
+# 5. MAIN EXECUTION
 # ==========================================
 def main():
     print("Starting Strictly Categorized, Sorted, & Fast Playlist Builder...")
     
     final_channels = {cat: [] for cat in CATEGORIES.keys()}
-    final_seen_names = set() # Prevents duplicate channels
+    final_seen_names = set()
     seen_urls = set()
     total_added = 0
+    to_check = []
 
+    # --- INJECT USER CUSTOM CHANNELS FIRST ---
+    print("\nParsing User Custom Channels...")
+    custom_parsed = parse_m3u(USER_CUSTOM_CHANNELS)
+    for name, logo, url, custom_cat in custom_parsed:
+        url = url.strip()
+        if not url.startswith("http") or url in seen_urls: continue
+        seen_urls.add(url)
+        
+        # Keep the exact category the user wrote
+        cat = custom_cat if custom_cat else "tamil iptv channels"
+        if cat not in final_channels:
+            final_channels[cat] = []
+            
+        clean_n = clean_name(name)
+        norm_name = normalize_name(name)
+        
+        if norm_name in final_seen_names: continue
+        
+        to_check.append((clean_n, logo, url, cat, norm_name))
+
+    # --- GRAB FROM REMOTE SOURCES ---
     for src_url in SOURCES:
-        print(f"\nFetching from: {src_url}")
+        print(f"Fetching from: {src_url}")
         try:
             resp = requests.get(src_url, timeout=15)
             resp.raise_for_status()
             parsed = parse_json(resp.text) if src_url.endswith('.json') else parse_m3u(resp.text)
             
-            # 1. WHITELIST FILTERING (Ultra Fast)
-            to_check = []
-            for name, logo, url in parsed:
+            for name, logo, url, _ in parsed:
                 url = url.strip()
                 if not url.startswith("http") or url in seen_urls: continue
                 seen_urls.add(url)
                 
                 cat = get_category(name)
-                if not cat: continue  # Skips unlisted channels instantly
+                if not cat: continue 
                 
-                # STRICT LOCAL SOURCE CHECK
                 if cat == "Tamil Local Channels" and src_url not in LOCAL_SOURCES:
                     continue
                 
                 clean_n = clean_name(name)
                 norm_name = normalize_name(name)
                 
-                # Deduplication check
-                if norm_name in final_seen_names: 
-                    continue
+                if norm_name in final_seen_names: continue
                 
                 to_check.append((clean_n, logo, url, cat, norm_name))
+        except Exception:
+            pass
 
-            if not to_check:
-                print("  -> No new matching channels found here.")
-                continue
+    print(f"\n-> Testing {len(to_check)} streams (Max 6s timeout)...")
+    
+    # --- MULTITHREADED CHECKING ---
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        results = executor.map(deep_stream_check, to_check)
+        for res in results:
+            if res:
+                orig_name, logo, url, cat, norm_name = res
                 
-            print(f"  -> Testing {len(to_check)} streams (Max 6s timeout)...")
-            
-            # 2. CHECK MULTITHREADED (Fast concurrent checks)
-            added_this_src = 0
-            with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
-                results = executor.map(deep_stream_check, to_check)
-                for res in results:
-                    if res:
-                        orig_name, logo, url, cat, norm_name = res
-                        
-                        if norm_name not in final_seen_names:
-                            final_seen_names.add(norm_name)
-                            final_channels[cat].append((orig_name, logo, url))
-                            added_this_src += 1
-                            total_added += 1
-            
-            print(f"  -> {added_this_src} working unique channels added.")
-            
-        except Exception as e:
-            print(f"  -> ERROR: Skipped source.")
+                if norm_name not in final_seen_names:
+                    final_seen_names.add(norm_name)
+                    final_channels[cat].append((orig_name, logo, url))
+                    total_added += 1
 
     # ==========================================
-    # 5. SORTING A-Z & FILE GENERATION
+    # 6. SORTING A-Z & FILE GENERATION
     # ==========================================
     print("\nSorting channels A-Z and writing master_playlist.m3u...")
     with open("master_playlist.m3u", "w", encoding="utf-8") as f:
+        # EXACT M3U HEADERS REQUESTED
         f.write("#EXTM3U\n")
+        f.write("#PLAYLIST:Checked by CODECS.COM M3U Checker\n")
         
         for cat in CATEGORIES.keys():
             channels = final_channels[cat]
             if channels:
-                # SORTING A-Z perfectly
                 channels.sort(key=lambda x: x[0].lower())
-                
                 f.write(f"\n# --- {cat} ---\n")
                 for display_name, logo, url in channels:
                     f.write(f'#EXTINF:-1 tvg-name="{display_name}" tvg-logo="{logo}" group-title="{cat}",{display_name}\n{url}\n')
@@ -242,12 +455,13 @@ def main():
     # ---------------------------------------------------------
     with open("README.md", "w", encoding="utf-8") as f:
         f.write("# Tamil & English IPTV Playlist\n\n")
-        f.write("This playlist is automatically checked, filtered, A-Z sorted, deduplicated, and updated every 3 hours.\n\n")
+        f.write("This playlist is automatically checked, filtered, A-Z sorted, deduplicated, and updated every 6 hours.\n\n")
         f.write(f"**Total LIVE Channels:** {total_added}\n**Last Updated:** {timestamp}\n\n")
-        f.write("## 📥 Playlist URL\n")
-        f.write("Copy the pure text link below and paste it directly into your IPTV Player:\n\n")
         
-        # Raw block prevents Markdown hyperlink parsing
+        f.write("## 📥 Playlist URL\n")
+        f.write("Use the **Copy button** in the top right corner of the box below. Paste it directly into your IPTV Player:\n\n")
+        
+        # Raw block prevents Markdown hyperlink parsing, ensuring a perfect copy button
         f.write("```text\n")
         f.write("[https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u](https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u)\n")
         f.write("```\n\n")
