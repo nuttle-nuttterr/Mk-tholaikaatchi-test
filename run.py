@@ -375,7 +375,6 @@ def main():
         if not url.startswith("http") or url in seen_urls: continue
         seen_urls.add(url)
         
-        # Keep the exact category the user wrote
         cat = custom_cat if custom_cat else "tamil iptv channels"
         if cat not in final_channels:
             final_channels[cat] = []
@@ -434,7 +433,6 @@ def main():
     # ==========================================
     print("\nSorting channels A-Z and writing master_playlist.m3u...")
     with open("master_playlist.m3u", "w", encoding="utf-8") as f:
-        # EXACT M3U HEADERS REQUESTED
         f.write("#EXTM3U\n")
         f.write("#PLAYLIST:Checked by CODECS.COM M3U Checker\n")
         
@@ -451,7 +449,7 @@ def main():
     timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     
     # ---------------------------------------------------------
-    # README UPDATE - Pure Text URL Fix
+    # README UPDATE - With Inline Code Backticks for perfectly clean URL
     # ---------------------------------------------------------
     with open("README.md", "w", encoding="utf-8") as f:
         f.write("# Tamil & English IPTV Playlist\n\n")
@@ -459,12 +457,10 @@ def main():
         f.write(f"**Total LIVE Channels:** {total_added}\n**Last Updated:** {timestamp}\n\n")
         
         f.write("## 📥 Playlist URL\n")
-        f.write("Use the **Copy button** in the top right corner of the box below. Paste it directly into your IPTV Player:\n\n")
+        f.write("Copy the link below and paste it directly into your IPTV Player:\n\n")
         
-        # Raw block prevents Markdown hyperlink parsing, ensuring a perfect copy button
-        f.write("```text\n")
-        f.write("[https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u](https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u)\n")
-        f.write("```\n\n")
+        # Uses single backticks to make it raw, un-clickable text
+        f.write("`https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u`\n\n")
         
         f.write("## 📊 Channel Breakdown\n| Category | Count |\n|---|---|\n")
         for cat in CATEGORIES.keys():
