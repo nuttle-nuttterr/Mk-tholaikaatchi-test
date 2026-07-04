@@ -7,7 +7,6 @@ import concurrent.futures
 # ==========================================
 # 1. USER'S CUSTOM HARDCODED CHANNELS
 # ==========================================
-# These channels bypass the strict dictionary filter and are directly injected!
 USER_CUSTOM_CHANNELS = """
 #EXTINF:-1 group-title="local channels",Sana TV
 https://galaxyott.live/hls/sanatv.m3u8
@@ -235,7 +234,19 @@ LOCAL_SOURCES = [
 ]
 
 # ==========================================
-# 3. STRICT CATEGORY WHITELIST
+# 3. RUTHLESS BLOCK LIST
+# ==========================================
+# If a channel has ANY of these words, it is DESTROYED immediately.
+# This prevents "Discovery Channel Hindi" or "Star Sports Telugu" from slipping through.
+BLOCKED_KEYWORDS = [
+    "hindi", "telugu", "malayalam", "kannada", "marathi", "bengali", "bangla", 
+    "gujarati", "punjabi", "odia", "assamese", "urdu", "bhojpuri",
+    "spanish", "french", "german", "italian", "portuguese", "russian",
+    "chinese", "japanese", "korean", "arabic", "indonesian"
+]
+
+# ==========================================
+# 4. STRICT CATEGORY WHITELIST
 # ==========================================
 CATEGORIES = {
     # ---------------- USER CUSTOM CATEGORIES ----------------
@@ -270,7 +281,7 @@ CATEGORIES = {
 }
 
 # ==========================================
-# 4. CORE FUNCTIONS
+# 5. CORE FUNCTIONS
 # ==========================================
 def clean_name(name):
     name = re.sub(r'\s*\[.*?\]\s*', '', name)
@@ -282,8 +293,18 @@ def normalize_name(name):
     name = re.sub(r'[^a-zA-Z0-9]', '', name)
     return name.lower()
 
+def is_blocked(name):
+    n = name.lower()
+    return any(lang in n for lang in BLOCKED_KEYWORDS)
+
 def get_category(name):
     if not name: return None
+    
+    # 1. RUTHLESS BLOCK CHECK FIRST (destroys Hindi/Telugu variants immediately)
+    if is_blocked(name):
+        return None
+        
+    # 2. THEN MATCH WHITELIST
     n = name.lower()
     for cat, keywords in CATEGORIES.items():
         if any(kw in n for kw in keywords): 
@@ -356,10 +377,10 @@ def deep_stream_check(item):
     return None
 
 # ==========================================
-# 5. MAIN EXECUTION
+# 6. MAIN EXECUTION
 # ==========================================
 def main():
-    print("Starting Strictly Categorized, Sorted, & Fast Playlist Builder...")
+    print("Starting Strictly Blocked, Categorized, & Sorted Playlist Builder...")
     
     final_channels = {cat: [] for cat in CATEGORIES.keys()}
     final_seen_names = set()
@@ -429,7 +450,7 @@ def main():
                     total_added += 1
 
     # ==========================================
-    # 6. SORTING A-Z & FILE GENERATION
+    # 7. SORTING A-Z & FILE GENERATION
     # ==========================================
     print("\nSorting channels A-Z and writing master_playlist.m3u...")
     with open("master_playlist.m3u", "w", encoding="utf-8") as f:
@@ -449,7 +470,7 @@ def main():
     timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     
     # ---------------------------------------------------------
-    # README UPDATE - With Inline Code Backticks for perfectly clean URL
+    # README UPDATE - Single Unclickable URL
     # ---------------------------------------------------------
     with open("README.md", "w", encoding="utf-8") as f:
         f.write("# Tamil & English IPTV Playlist\n\n")
@@ -459,7 +480,6 @@ def main():
         f.write("## 📥 Playlist URL\n")
         f.write("Copy the link below and paste it directly into your IPTV Player:\n\n")
         
-        # Uses single backticks to make it raw, un-clickable text
         f.write("`https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u`\n\n")
         
         f.write("## 📊 Channel Breakdown\n| Category | Count |\n|---|---|\n")
