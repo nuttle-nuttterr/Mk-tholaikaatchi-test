@@ -2,20 +2,20 @@ name: Update IPTV Playlist
 
 on:
   schedule:
-    - cron: '0 */3 * * *'  # Runs every 3 hours
-  workflow_dispatch:        # Allows manual triggering from the GitHub Actions tab
+    - cron: '0 */3 * * *'  # Runs automatically every 3 hours
+  workflow_dispatch:        # Allows you to click "Run workflow" manually
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write       # Required to push changes back to the repository
+      contents: write       
     
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0    # Prevents "fetch first" conflict errors
+          fetch-depth: 0    
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -36,7 +36,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add master_playlist.m3u README.md
           
-          # Only commit and push if there are actual changes
+          # Only commit and push if the script actually updated the files
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
