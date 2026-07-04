@@ -2,11 +2,10 @@
 
 This playlist is automatically checked, filtered, and updated every 3 hours.
 
-**Total LIVE Channels:** 108
-**Last Updated:** 2026-07-04 13:10:45 UTC
+**Total LIVE Channels:** 196
+**Last Updated:** 2026-07-04 13:44:04 UTC
 
 ## 📥 Playlist URL
-Copy and paste this link into your IPTV Player (VLC, TiViMate, etc.):
 ```
 [https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u](https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u)
 ```
@@ -14,11 +13,14 @@ Copy and paste this link into your IPTV Player (VLC, TiViMate, etc.):
 ## 📊 Channel Breakdown
 | Category | Count |
 |---|---|
-| Tamil News | 17 |
+| Tamil News | 25 |
+| Tamil Sports | 1 |
+| Tamil Movies | 12 |
+| Tamil Music | 13 |
 | Tamil Kids | 1 |
-| Tamil Movies | 10 |
-| Tamil Music | 9 |
-| Tamil Devotional | 15 |
+| Tamil Devotional | 21 |
 | Tamil Shopping | 1 |
-| Sports | 40 |
-| Tamil Entertainment | 15 |
+| Tamil Entertainment | 28 |
+| English News | 49 |
+| English Movies | 25 |
+| English Sports | 20 |
