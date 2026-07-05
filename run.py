@@ -7,6 +7,7 @@ import concurrent.futures
 # ==========================================
 # 1. USER'S CUSTOM HARDCODED CHANNELS
 # ==========================================
+# These are processed FIRST to guarantee they get priority in deduplication.
 USER_CUSTOM_CHANNELS = """
 #EXTINF:-1 group-title="local channels",Sana TV
 https://galaxyott.live/hls/sanatv.m3u8
@@ -207,7 +208,7 @@ https://cdn-4.pishow.tv/live/1531/master.m3u8
 """
 
 # ==========================================
-# 2. ALL YOUR SOURCES
+# 2. ALL SOURCES
 # ==========================================
 SOURCES = [
     "https://raw.githubusercontent.com/Vmfm/tamilvmtv/main/live/channels.m3u",
@@ -227,89 +228,162 @@ SOURCES = [
     "https://iptv-org.github.io/iptv/languages/eng.m3u"
 ]
 
+# Ashoka is BANNED from providing local channels! Only Vmfm is trusted here.
 LOCAL_SOURCES = [
-    "https://raw.githubusercontent.com/Vmfm/tamilvmtv/main/live/channels.m3u",
-    "https://raw.githubusercontent.com/amazeyourself/m3u/main/ashokadigital.m3u",
-    "https://raw.githubusercontent.com/amazeyourself/tamil-local-iptv/refs/heads/main/channels.m3u"
+    "https://raw.githubusercontent.com/Vmfm/tamilvmtv/main/live/channels.m3u"
 ]
 
 # ==========================================
 # 3. RUTHLESS BLOCK LIST
 # ==========================================
-# If a channel has ANY of these words, it is DESTROYED immediately.
-# This prevents "Discovery Channel Hindi" or "Star Sports Telugu" from slipping through.
+# Stops "KTV Bangla" or "Discovery Hindi" instantly across all sources.
 BLOCKED_KEYWORDS = [
     "hindi", "telugu", "malayalam", "kannada", "marathi", "bengali", "bangla", 
     "gujarati", "punjabi", "odia", "assamese", "urdu", "bhojpuri",
     "spanish", "french", "german", "italian", "portuguese", "russian",
-    "chinese", "japanese", "korean", "arabic", "indonesian"
+    "chinese", "japanese", "korean", "arabic", "indonesian", "nepali"
 ]
 
 # ==========================================
-# 4. STRICT CATEGORY WHITELIST
+# 4. STRICT CATEGORY WHITELIST & ORDERING
 # ==========================================
-CATEGORIES = {
-    # ---------------- USER CUSTOM CATEGORIES ----------------
-    "local channels": [], 
-    "tamil iptv channels": [],
-    
-    # ---------------- TAMIL ----------------
-    "Tamil GEC": ["sun tv", "star vijay", "vijay tv", "zee tamil", "colors tamil", "kalaignar tv", "kalaignar", "jaya tv", "raj tv", "polimer tv", "makkal tv", "vasanth tv", "vasanth", "puthuyugam tv", "puthuyugam", "mega tv", "captain tv", "vendhar tv", "vendhar"],
-    "Tamil Movies": ["ktv", "star vijay super", "vijay super", "zee thirai", "j movie", "jaya movie", "raj digital plus", "murasu", "mega 24", "sun action"],
-    "Tamil News": ["sun news", "puthiya thalaimurai", "thanthi tv", "news18 tamil", "polimer news", "news7 tamil", "sathiyam", "news j", "jaya plus", "kalaignar seithigal", "raj news", "captain news"],
-    "Tamil Comedy": ["adithya tv", "sirippoli"],
-    "Tamil Music": ["sun music", "star vijay music", "vijay music", "isaiaruvi", "isai aruvi", "jaya max", "raj musix", "mega musiq"],
-    "Tamil Infotainment": ["sun life", "discovery tamil", "nat geo tamil", "sony bbc earth tamil", "bbc earth tamil"],
-    "Tamil Spiritual": ["madha tv", "angel tv", "nambikkai", "vaanavil", "jothi tv", "velicham tv", "sankara tv", "sri sankara"],
-    "Tamil Kids": ["chutti tv", "etv bal bharat tamil", "cartoon network tamil", "pogo tamil", "discovery kids tamil", "sony yay tamil", "nick tamil", "disney tamil", "kochu tv"],
-    
-    # ---------------- ENGLISH ----------------
-    "English GEC": ["zee cafe", "colors infinity", "comedy central", "disney international"],
-    "English Movies": ["star movies", "sony pix", "movies now", "mnx", "mn+", "&flix", "&prive", "romedy now", "hbo", "wb"],
-    "English National News": ["times now", "republic tv", "cnn-news18", "india today", "ndtv 24x7", "newsx", "mirror now", "wion"],
-    "English International News": ["bbc news", "cnn international", "al jazeera", "rt news", "russia today", "rt "],
-    "English Business News": ["cnbc-tv18", "et now", "ndtv profit"],
-    "English Infotainment": ["discovery channel", "national geographic", "history tv18", "animal planet", "sony bbc earth"],
-    "English Lifestyle": ["tlc", "travelxp", "goodtimes"],
-    "English Kids": ["cartoon network", "nickelodeon", "pogo", "disney channel", "disney junior", "sonic", "super hungama", "discovery kids", "babytv"],
-    
-    # ---------------- SPORTS ----------------
-    "Sports": ["star sports 1", "star sports 2", "star sports select 1", "star sports select 2", "sony sports ten 1", "sony sports ten 2", "sony sports ten 5", "sony ten 1", "sony ten 2", "sony ten 5", "eurosport", "sports18", "sports 18"],
-    
-    # ---------------- LOCAL ----------------
-    "Tamil Local Channels": ["local", "cable", "arun", "network"]
+# This determines the EXACT order the categories will print in the M3U file. No shuffling.
+CATEGORY_ORDER = [
+    "Tamil GEC", "Tamil Movies", "Tamil News", "Tamil Comedy", 
+    "Tamil Music", "Tamil Infotainment", "Tamil Spiritual", "Tamil Kids",
+    "English GEC", "English Movies", "English National News", 
+    "English International News", "English Business News", "English Infotainment", 
+    "English Lifestyle", "English Kids", "Sports", 
+    "Tamil Local Channels", "local channels", "tamil iptv channels"
+]
+
+CATEGORIES_MAP = {
+    "Tamil GEC": {
+        "Sun TV": ["sun tv"], "Star Vijay": ["star vijay", "vijay tv"], "Zee Tamil": ["zee tamil"],
+        "Colors Tamil": ["colors tamil"], "Kalaignar TV": ["kalaignar tv", "kalaignar"],
+        "Jaya TV": ["jaya tv"], "Raj TV": ["raj tv"], "Polimer TV": ["polimer tv"],
+        "Makkal TV": ["makkal tv", "makkal"], "Vasanth TV": ["vasanth tv", "vasanth"],
+        "Puthuyugam TV": ["puthuyugam tv", "puthuyugam"], "Mega TV": ["mega tv"],
+        "Captain TV": ["captain tv"], "Vendhar TV": ["vendhar tv", "vendhar"]
+    },
+    "Tamil Movies": {
+        "KTV": ["ktv"], "Star Vijay Super": ["star vijay super", "vijay super"],
+        "Zee Thirai": ["zee thirai"], "J Movie": ["j movie", "jaya movie"],
+        "Raj Digital Plus": ["raj digital plus"], "Murasu": ["murasu"],
+        "Mega 24": ["mega 24"], "Sun Action": ["sun action"], "Tamil Movies": ["tamil movies", "tamil movie"]
+    },
+    "Tamil News": {
+        "Sun News": ["sun news"], "Puthiya Thalaimurai": ["puthiya thalaimurai"],
+        "Thanthi TV": ["thanthi tv", "thanthi"], "News18 Tamil Nadu": ["news18 tamil", "news 18 tamil"],
+        "Polimer News": ["polimer news"], "News7 Tamil": ["news7 tamil", "news 7 tamil", "news 7"],
+        "Sathiyam TV": ["sathiyam tv", "sathiyam"], "News J": ["news j", "newsj"],
+        "Jaya Plus": ["jaya plus"], "Kalaignar Seithigal": ["kalaignar seithigal"],
+        "Raj News Tamil": ["raj news tamil", "raj news"], "Captain News": ["captain news"]
+    },
+    "Tamil Comedy": {
+        "Adithya TV": ["adithya tv", "adithya"], "Sirippoli": ["sirippoli"]
+    },
+    "Tamil Music": {
+        "Sun Music": ["sun music"], "Star Vijay Music": ["star vijay music", "vijay music"],
+        "Isaiaruvi": ["isaiaruvi", "isai aruvi"], "Jaya Max": ["jaya max"],
+        "Raj Musix Tamil": ["raj musix tamil", "raj musix"], "Mega Musiq": ["mega musiq", "mega music"]
+    },
+    "Tamil Infotainment": {
+        "Sun Life": ["sun life"], "Discovery Tamil": ["discovery tamil", "discovery channel tamil"],
+        "Nat Geo Tamil": ["nat geo tamil", "national geographic tamil"], "Sony BBC Earth Tamil": ["sony bbc earth tamil", "bbc earth tamil"]
+    },
+    "Tamil Spiritual": {
+        "Madha TV": ["madha tv"], "Angel TV": ["angel tv"], "Nambikkai TV": ["nambikkai tv", "nambikkai"],
+        "Vaanavil": ["vaanavil"], "Jothi TV": ["jothi tv"], "Velicham TV": ["velicham tv"],
+        "Sri Sankara TV": ["sri sankara tv", "sankara tv", "sri sankara"]
+    },
+    "Tamil Kids": {
+        "Chutti TV": ["chutti tv"], "ETV Bal Bharat Tamil": ["etv bal bharat tamil", "bal bharat tamil"],
+        "Cartoon Network Tamil": ["cartoon network tamil", "cn tamil"], "Pogo Tamil": ["pogo tamil"],
+        "Discovery Kids Tamil": ["discovery kids tamil"], "Sony Yay Tamil": ["sony yay tamil"],
+        "Nick Tamil": ["nick tamil", "nickelodeon tamil"], "Disney Channel Tamil": ["disney channel tamil", "disney tamil"],
+        "Kochu TV": ["kochu tv"]
+    },
+    "English GEC": {
+        "Zee Cafe": ["zee cafe"], "Colors Infinity": ["colors infinity"],
+        "Comedy Central": ["comedy central"], "Disney International HD": ["disney international"]
+    },
+    "English Movies": {
+        "Star Movies Select": ["star movies select"], "Star Movies": ["star movies"],
+        "Sony PIX": ["sony pix"], "Movies Now": ["movies now"], "MNX": ["mnx"], "MN+": ["mn+"],
+        "&flix": ["&flix", "andflix"], "&prive HD": ["&prive hd", "&prive", "andprive"],
+        "Romedy Now": ["romedy now"], "HBO": ["hbo"], "WB": ["wb"]
+    },
+    "English National News": {
+        "Times Now": ["times now"], "Republic TV": ["republic tv"], "CNN-News18": ["cnn-news18", "cnn news18"],
+        "India Today": ["india today"], "NDTV 24x7": ["ndtv 24x7"], "NewsX": ["newsx"],
+        "Mirror Now": ["mirror now"], "WION": ["wion"]
+    },
+    "English International News": {
+        "BBC News": ["bbc news"], "CNN International": ["cnn international", "cnn"],
+        "Al Jazeera English": ["al jazeera english", "al jazeera"], "RT (Russia Today)": ["rt russia today", "russia today", "rt news"]
+    },
+    "English Business News": {
+        "CNBC-TV18": ["cnbc-tv18", "cnbc tv18"], "ET Now": ["et now"], "NDTV Profit": ["ndtv profit"]
+    },
+    "English Infotainment": {
+        "Discovery Channel": ["discovery channel", "discovery"], "National Geographic": ["national geographic", "nat geo"],
+        "History TV18": ["history tv18", "history"], "Animal Planet": ["animal planet"],
+        "Sony BBC Earth": ["sony bbc earth", "bbc earth"]
+    },
+    "English Lifestyle": {
+        "TLC": ["tlc"], "Travelxp": ["travelxp"], "Goodtimes": ["goodtimes"]
+    },
+    "English Kids": {
+        "Cartoon Network": ["cartoon network"], "Nickelodeon": ["nickelodeon", "nick"],
+        "Pogo": ["pogo"], "Disney Channel": ["disney channel"], "Disney Junior": ["disney junior"],
+        "Sonic": ["sonic"], "Super Hungama": ["super hungama"], "Discovery Kids": ["discovery kids"],
+        "BabyTV": ["babytv"]
+    },
+    "Sports": {
+        "Star Sports 1 Tamil": ["star sports 1 tamil", "star sports tamil"], "Star Sports 1": ["star sports 1"],
+        "Star Sports 2": ["star sports 2"], "Star Sports Select 1": ["star sports select 1"],
+        "Star Sports Select 2": ["star sports select 2"], "Sony Sports Ten 1": ["sony sports ten 1", "sony ten 1"],
+        "Sony Sports Ten 2": ["sony sports ten 2", "sony ten 2"], "Sony Sports Ten 5": ["sony sports ten 5", "sony ten 5"],
+        "Eurosport": ["eurosport"], "Sports18 - 1": ["sports18 - 1", "sports18", "sports 18"]
+    }
 }
 
 # ==========================================
 # 5. CORE FUNCTIONS
 # ==========================================
 def clean_name(name):
+    """Removes standard tags for display."""
     name = re.sub(r'\s*\[.*?\]\s*', '', name)
     name = re.sub(r'\s*\(.*?\)\s*', '', name)
     return ' '.join(name.split()).strip()
 
-def normalize_name(name):
-    name = re.sub(r'\b(HD|SD|FHD|4K|UHD)\b', '', name, flags=re.I)
-    name = re.sub(r'[^a-zA-Z0-9]', '', name)
-    return name.lower()
+def get_dedup_key(name):
+    """Aggressive stripper to prevent ANY duplicates (e.g. 'Sun TV HD' -> 'suntv')."""
+    n = re.sub(r'\[.*?\]', '', name)
+    n = re.sub(r'\(.*?\)', '', n)
+    # Remove resolution/quality tags commonly added to channel names
+    n = re.sub(r'\b(hd|sd|fhd|uhd|4k|1080p|720p|hevc|hq|tv|channel)\b', '', n, flags=re.I)
+    n = re.sub(r'[^a-z0-9]', '', n.lower())
+    return n
 
 def is_blocked(name):
+    """Ruthlessly drops any channel name containing blocked languages (e.g., 'KTV Bangla')."""
+    if not name: return True
     n = name.lower()
     return any(lang in n for lang in BLOCKED_KEYWORDS)
 
-def get_category(name):
-    if not name: return None
-    
-    # 1. RUTHLESS BLOCK CHECK FIRST (destroys Hindi/Telugu variants immediately)
-    if is_blocked(name):
-        return None
+def get_category_and_name(name):
+    if is_blocked(name): 
+        return None, None
         
-    # 2. THEN MATCH WHITELIST
     n = name.lower()
-    for cat, keywords in CATEGORIES.items():
-        if any(kw in n for kw in keywords): 
-            return cat
-    return None
+    for cat, channels in CATEGORIES_MAP.items():
+        for proper_name, keywords in channels.items():
+            for kw in keywords:
+                if kw in n:
+                    return cat, proper_name
+    return None, None
 
 def parse_m3u(content):
     channels = []
@@ -318,15 +392,12 @@ def parse_m3u(content):
     for line in lines:
         line = line.strip()
         if line.startswith("#EXTINF:"):
-            # Grab logo
             logos = re.findall(r'tvg-logo="(.*?)"', line)
             current_logo = logos[0] if logos else ""
             
-            # Grab specific group-title if present (used for Custom Channels)
             cats = re.findall(r'group-title="(.*?)"', line)
             current_cat = cats[0] if cats else None
             
-            # Grab name
             current_name = line.rsplit(',', 1)[1].strip() if ',' in line else None
         elif line and not line.startswith("#") and current_name:
             channels.append((current_name, current_logo, line, current_cat))
@@ -348,27 +419,31 @@ def parse_json(content):
     return channels
 
 def deep_stream_check(item):
-    orig_name, logo, url, cat, norm_name = item
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    """
+    Advanced broken link verification (8s Timeout). 
+    Reads 1500 bytes to drop empty playlists and fake 200 OK HTML pages.
+    """
+    proper_name, logo, url, cat, dedup_key = item
+    headers = {'User-Agent': 'VLC/3.0.9 LibVLC/3.0.9'}
     
-    # Local Channels bypass timeout check
-    if "local" in cat.lower():
-        return item
-        
     try:
-        response = requests.get(url, headers=headers, timeout=6.0, stream=True)
+        response = requests.get(url, headers=headers, timeout=8.0, stream=True)
         if response.status_code == 200:
-            chunk = response.raw.read(1024, decode_content=True)
+            chunk = response.raw.read(1500, decode_content=True)
             if not chunk:
                 return None
                 
             text_chunk = chunk.decode('utf-8', errors='ignore').lower()
             
-            if '<html' in text_chunk or '<!doctype' in text_chunk:
+            # 1. Drop HTML error pages masking as 200 OK
+            if '<html' in text_chunk or '<!doctype' in text_chunk or '<body' in text_chunk:
                 return None
                 
-            if '.m3u8' in url.lower():
-                if '#extm3u' not in text_chunk and '#ext-x' not in text_chunk:
+            # 2. Strict M3U8 validation (must contain actual media tags, not just a blank header)
+            if '.m3u8' in url.lower() or 'm3u8' in text_chunk:
+                if '#extm3u' not in text_chunk:
+                    return None
+                if '#extinf' not in text_chunk and '#ext-x-stream-inf' not in text_chunk and '#ext-x-targetduration' not in text_chunk:
                     return None
                     
             return item
@@ -380,9 +455,11 @@ def deep_stream_check(item):
 # 6. MAIN EXECUTION
 # ==========================================
 def main():
-    print("Starting Strictly Blocked, Categorized, & Sorted Playlist Builder...")
+    print("Starting Perfect Deduplication, Sorted, & Fast Playlist Builder...")
     
-    final_channels = {cat: [] for cat in CATEGORIES.keys()}
+    final_channels = {cat: [] for cat in CATEGORY_ORDER}
+    
+    # Track the pure stripped name to guarantee ZERO duplicates across the entire playlist
     final_seen_names = set()
     seen_urls = set()
     total_added = 0
@@ -396,16 +473,16 @@ def main():
         if not url.startswith("http") or url in seen_urls: continue
         seen_urls.add(url)
         
+        # Custom channels must still pass the language blocker!
+        if is_blocked(name): continue
+        
         cat = custom_cat if custom_cat else "tamil iptv channels"
-        if cat not in final_channels:
-            final_channels[cat] = []
-            
-        clean_n = clean_name(name)
-        norm_name = normalize_name(name)
+        proper_name = clean_name(name)
+        dedup_key = get_dedup_key(proper_name)
         
-        if norm_name in final_seen_names: continue
+        if dedup_key in final_seen_names: continue
         
-        to_check.append((clean_n, logo, url, cat, norm_name))
+        to_check.append((proper_name, logo, url, cat, dedup_key))
 
     # --- GRAB FROM REMOTE SOURCES ---
     for src_url in SOURCES:
@@ -415,51 +492,71 @@ def main():
             resp.raise_for_status()
             parsed = parse_json(resp.text) if src_url.endswith('.json') else parse_m3u(resp.text)
             
-            for name, logo, url, _ in parsed:
+            for name, logo, url, upstream_cat in parsed:
                 url = url.strip()
                 if not url.startswith("http") or url in seen_urls: continue
                 seen_urls.add(url)
                 
-                cat = get_category(name)
-                if not cat: continue 
+                # Check Blocklist FIRST!
+                if is_blocked(name): continue
                 
-                if cat == "Tamil Local Channels" and src_url not in LOCAL_SOURCES:
-                    continue
+                cat, proper_name = get_category_and_name(name)
                 
-                clean_n = clean_name(name)
-                norm_name = normalize_name(name)
+                # Dynamic Local Channel Fallback strictly for VMFM
+                if not cat:
+                    if src_url in LOCAL_SOURCES:
+                        cat = "Tamil Local Channels"
+                        proper_name = clean_name(name)
+                    else:
+                        continue 
                 
-                if norm_name in final_seen_names: continue
+                dedup_key = get_dedup_key(proper_name)
                 
-                to_check.append((clean_n, logo, url, cat, norm_name))
+                if dedup_key in final_seen_names: continue
+                
+                to_check.append((proper_name, logo, url, cat, dedup_key))
         except Exception:
             pass
 
-    print(f"\n-> Testing {len(to_check)} streams (Max 6s timeout)...")
+    print(f"\n-> Testing {len(to_check)} streams (Max 8s timeout with deep byte checks)...")
     
     # --- MULTITHREADED CHECKING ---
     with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
         results = executor.map(deep_stream_check, to_check)
         for res in results:
             if res:
-                orig_name, logo, url, cat, norm_name = res
+                proper_name, logo, url, cat, dedup_key = res
                 
-                if norm_name not in final_seen_names:
-                    final_seen_names.add(norm_name)
-                    final_channels[cat].append((orig_name, logo, url))
+                # Final lock to ensure no multi-thread duplicates slipped in
+                if dedup_key not in final_seen_names:
+                    final_seen_names.add(dedup_key)
+                    
+                    if cat not in final_channels:
+                        final_channels[cat] = []
+                    final_channels[cat].append((proper_name, logo, url))
                     total_added += 1
 
     # ==========================================
-    # 7. SORTING A-Z & FILE GENERATION
+    # 7. ORDERED SORTING & FILE GENERATION
     # ==========================================
-    print("\nSorting channels A-Z and writing master_playlist.m3u...")
+    print("\nWriting master_playlist.m3u in perfect category order...")
     with open("master_playlist.m3u", "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
         f.write("#PLAYLIST:Checked by CODECS.COM M3U Checker\n")
         
-        for cat in CATEGORIES.keys():
-            channels = final_channels[cat]
-            if channels:
+        # Enforce exact category order, then A-Z sort inside the category
+        for cat in CATEGORY_ORDER:
+            if cat in final_channels and final_channels[cat]:
+                channels = final_channels[cat]
+                channels.sort(key=lambda x: x[0].lower())
+                f.write(f"\n# --- {cat} ---\n")
+                for display_name, logo, url in channels:
+                    f.write(f'#EXTINF:-1 tvg-name="{display_name}" tvg-logo="{logo}" group-title="{cat}",{display_name}\n{url}\n')
+                    
+        # Catch any random categories that might have been dynamically added
+        for cat in sorted(final_channels.keys()):
+            if cat not in CATEGORY_ORDER and final_channels[cat]:
+                channels = final_channels[cat]
                 channels.sort(key=lambda x: x[0].lower())
                 f.write(f"\n# --- {cat} ---\n")
                 for display_name, logo, url in channels:
@@ -470,23 +567,24 @@ def main():
     timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     
     # ---------------------------------------------------------
-    # README UPDATE - Single Unclickable URL
+    # README UPDATE
     # ---------------------------------------------------------
     with open("README.md", "w", encoding="utf-8") as f:
         f.write("# Tamil & English IPTV Playlist\n\n")
-        f.write("This playlist is automatically checked, filtered, A-Z sorted, deduplicated, and updated every 6 hours.\n\n")
+        f.write("This playlist is automatically checked, strictly deduplicated (1 working link per channel), properly categorized, A-Z sorted, and updated every 6 hours.\n\n")
         f.write(f"**Total LIVE Channels:** {total_added}\n**Last Updated:** {timestamp}\n\n")
         
         f.write("## 📥 Playlist URL\n")
-        f.write("Copy the link below and paste it directly into your IPTV Player:\n\n")
+        f.write("Use the **Copy button** in the top right corner of the box below. Paste it directly into your IPTV Player:\n\n")
         
-        f.write("`https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u`\n\n")
+        f.write("```text\n")
+        f.write("[https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u](https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u)\n")
+        f.write("```\n\n")
         
         f.write("## 📊 Channel Breakdown\n| Category | Count |\n|---|---|\n")
-        for cat in CATEGORIES.keys():
-            channels = final_channels[cat]
-            if channels:
-                f.write(f"| {cat} | {len(channels)} |\n")
+        for cat in CATEGORY_ORDER:
+            if cat in final_channels and final_channels[cat]:
+                f.write(f"| {cat} | {len(final_channels[cat])} |\n")
 
 if __name__ == "__main__":
     main()
