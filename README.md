@@ -1,35 +1,37 @@
 # Tamil & English IPTV Playlist
 
-This playlist is automatically checked, filtered, A-Z sorted, deduplicated, and updated every 6 hours.
+This playlist is automatically checked, perfectly categorized, A-Z sorted, completely deduplicated (1 link per channel), and updated every 6 hours.
 
-**Total LIVE Channels:** 274
-**Last Updated:** 2026-07-05 01:52:34 UTC
+**Total LIVE Channels:** 243
+**Last Updated:** 2026-07-05 02:25:20 UTC
 
 ## 📥 Playlist URL
-Copy the link below and paste it directly into your IPTV Player:
+Use the **Copy button** in the top right corner of the box below. Paste it directly into your IPTV Player:
 
-`https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u`
+```text
+[https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u](https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u)
+```
 
 ## 📊 Channel Breakdown
 | Category | Count |
 |---|---|
-| local channels | 66 |
-| tamil iptv channels | 22 |
-| Tamil GEC | 13 |
-| Tamil Movies | 14 |
-| Tamil News | 7 |
-| Tamil Comedy | 3 |
-| Tamil Music | 6 |
+| Tamil GEC | 6 |
+| Tamil Movies | 4 |
+| Tamil News | 3 |
+| Tamil Comedy | 2 |
+| Tamil Music | 3 |
 | Tamil Infotainment | 1 |
-| Tamil Spiritual | 22 |
+| Tamil Spiritual | 6 |
 | Tamil Kids | 1 |
-| English GEC | 8 |
-| English Movies | 21 |
-| English National News | 18 |
-| English International News | 32 |
-| English Business News | 4 |
-| English Infotainment | 10 |
-| English Lifestyle | 4 |
-| English Kids | 13 |
+| English GEC | 2 |
+| English Movies | 7 |
+| English National News | 5 |
+| English International News | 3 |
+| English Business News | 1 |
+| English Infotainment | 5 |
+| English Lifestyle | 2 |
+| English Kids | 3 |
 | Sports | 7 |
-| Tamil Local Channels | 2 |
+| local channels | 23 |
+| Tamil Local Channels | 139 |
+| tamil iptv channels | 20 |
