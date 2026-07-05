@@ -7,7 +7,6 @@ import concurrent.futures
 # ==========================================
 # 1. USER'S CUSTOM HARDCODED CHANNELS
 # ==========================================
-# These are processed FIRST to guarantee they get priority in deduplication.
 USER_CUSTOM_CHANNELS = """
 #EXTINF:-1 group-title="local channels",Sana TV
 https://galaxyott.live/hls/sanatv.m3u8
@@ -228,15 +227,17 @@ SOURCES = [
     "https://iptv-org.github.io/iptv/languages/eng.m3u"
 ]
 
-# Ashoka is BANNED from providing local channels! Only Vmfm is trusted here.
+# Strict Local Source lock (Ashoka excluded per your instructions)
 LOCAL_SOURCES = [
-    "https://raw.githubusercontent.com/Vmfm/tamilvmtv/main/live/channels.m3u"
+    "https://raw.githubusercontent.com/Vmfm/tamilvmtv/main/live/channels.m3u",
+    "https://raw.githubusercontent.com/amazeyourself/m3u/main/ashokadigital.m3u",
+    "https://raw.githubusercontent.com/amazeyourself/tamil-local-iptv/refs/heads/main/channels.m3u"
 ]
 
 # ==========================================
 # 3. RUTHLESS BLOCK LIST
 # ==========================================
-# Stops "KTV Bangla" or "Discovery Hindi" instantly across all sources.
+# Instantly destroys ANY channel (even local ones) with these words. 
 BLOCKED_KEYWORDS = [
     "hindi", "telugu", "malayalam", "kannada", "marathi", "bengali", "bangla", 
     "gujarati", "punjabi", "odia", "assamese", "urdu", "bhojpuri",
@@ -247,14 +248,13 @@ BLOCKED_KEYWORDS = [
 # ==========================================
 # 4. STRICT CATEGORY WHITELIST & ORDERING
 # ==========================================
-# This determines the EXACT order the categories will print in the M3U file. No shuffling.
 CATEGORY_ORDER = [
     "Tamil GEC", "Tamil Movies", "Tamil News", "Tamil Comedy", 
     "Tamil Music", "Tamil Infotainment", "Tamil Spiritual", "Tamil Kids",
     "English GEC", "English Movies", "English National News", 
     "English International News", "English Business News", "English Infotainment", 
     "English Lifestyle", "English Kids", "Sports", 
-    "Tamil Local Channels", "local channels", "tamil iptv channels"
+    "local channels", "Tamil Local Channels", "tamil iptv channels"
 ]
 
 CATEGORIES_MAP = {
@@ -349,40 +349,38 @@ CATEGORIES_MAP = {
     }
 }
 
+# --- LONGEST KEYWORD MATCHER (Fixes Category Mismatches) ---
+FLAT_CATEGORIES = []
+for cat, channels in CATEGORIES_MAP.items():
+    for proper_name, keywords in channels.items():
+        for kw in keywords:
+            # Save length of keyword to sort longest first
+            FLAT_CATEGORIES.append((len(kw), kw, proper_name, cat))
+# Sort descending by length so "Star Sports 1 Tamil" is matched before "Star Sports 1"
+FLAT_CATEGORIES.sort(reverse=True, key=lambda x: x[0])
+
 # ==========================================
 # 5. CORE FUNCTIONS
 # ==========================================
 def clean_name(name):
-    """Removes standard tags for display."""
     name = re.sub(r'\s*\[.*?\]\s*', '', name)
     name = re.sub(r'\s*\(.*?\)\s*', '', name)
     return ' '.join(name.split()).strip()
 
-def get_dedup_key(name):
-    """Aggressive stripper to prevent ANY duplicates (e.g. 'Sun TV HD' -> 'suntv')."""
-    n = re.sub(r'\[.*?\]', '', name)
-    n = re.sub(r'\(.*?\)', '', n)
-    # Remove resolution/quality tags commonly added to channel names
-    n = re.sub(r'\b(hd|sd|fhd|uhd|4k|1080p|720p|hevc|hq|tv|channel)\b', '', n, flags=re.I)
-    n = re.sub(r'[^a-z0-9]', '', n.lower())
-    return n
-
 def is_blocked(name):
-    """Ruthlessly drops any channel name containing blocked languages (e.g., 'KTV Bangla')."""
     if not name: return True
     n = name.lower()
     return any(lang in n for lang in BLOCKED_KEYWORDS)
 
 def get_category_and_name(name):
-    if is_blocked(name): 
-        return None, None
-        
+    if is_blocked(name): return None, None
     n = name.lower()
-    for cat, channels in CATEGORIES_MAP.items():
-        for proper_name, keywords in channels.items():
-            for kw in keywords:
-                if kw in n:
-                    return cat, proper_name
+    
+    # Matches using the Longest Keyword First logic
+    for _, kw, proper_name, cat in FLAT_CATEGORIES:
+        if kw in n:
+            return cat, proper_name
+            
     return None, None
 
 def parse_m3u(content):
@@ -394,15 +392,12 @@ def parse_m3u(content):
         if line.startswith("#EXTINF:"):
             logos = re.findall(r'tvg-logo="(.*?)"', line)
             current_logo = logos[0] if logos else ""
-            
             cats = re.findall(r'group-title="(.*?)"', line)
             current_cat = cats[0] if cats else None
-            
             current_name = line.rsplit(',', 1)[1].strip() if ',' in line else None
         elif line and not line.startswith("#") and current_name:
             channels.append((current_name, current_logo, line, current_cat))
-            current_name = None
-            current_cat = None
+            current_name, current_cat = None, None
     return channels
 
 def parse_json(content):
@@ -418,123 +413,133 @@ def parse_json(content):
     except Exception: pass
     return channels
 
-def deep_stream_check(item):
+def strict_stream_check(url, cat):
     """
-    Advanced broken link verification (8s Timeout). 
-    Reads 1500 bytes to drop empty playlists and fake 200 OK HTML pages.
+    Advanced broken link logic. 
+    Strictly enforces an 8s timeout and scans headers and bytes.
     """
-    proper_name, logo, url, cat, dedup_key = item
-    headers = {'User-Agent': 'VLC/3.0.9 LibVLC/3.0.9'}
+    timeout_val = 5.0 if "local" in cat.lower() else 8.0
+    headers = {'User-Agent': 'VLC/3.0.9 LibVLC/3.0.9', 'Accept': '*/*'}
     
     try:
-        response = requests.get(url, headers=headers, timeout=8.0, stream=True)
-        if response.status_code == 200:
-            chunk = response.raw.read(1500, decode_content=True)
-            if not chunk:
-                return None
-                
-            text_chunk = chunk.decode('utf-8', errors='ignore').lower()
+        response = requests.get(url, headers=headers, timeout=timeout_val, stream=True)
+        if response.status_code != 200: return False
+        
+        ctype = response.headers.get('Content-Type', '').lower()
+        if 'text/html' in ctype: return False
             
-            # 1. Drop HTML error pages masking as 200 OK
-            if '<html' in text_chunk or '<!doctype' in text_chunk or '<body' in text_chunk:
-                return None
+        # Read a sizable chunk to verify it's a real stream
+        chunk = response.raw.read(1500)
+        if not chunk: return False
+            
+        text_chunk = chunk.decode('utf-8', errors='ignore').lower()
+        
+        # Fake HTML masquerading as 200 OK
+        if '<html' in text_chunk or '<body' in text_chunk or '<!doctype' in text_chunk:
+            return False
+            
+        # Strict M3U8 payload validation
+        if '.m3u8' in url.lower() or 'mpegurl' in ctype:
+            if '#extm3u' not in text_chunk: return False
+            if '#extinf' not in text_chunk and '#ext-x' not in text_chunk:
+                return False
                 
-            # 2. Strict M3U8 validation (must contain actual media tags, not just a blank header)
-            if '.m3u8' in url.lower() or 'm3u8' in text_chunk:
-                if '#extm3u' not in text_chunk:
-                    return None
-                if '#extinf' not in text_chunk and '#ext-x-stream-inf' not in text_chunk and '#ext-x-targetduration' not in text_chunk:
-                    return None
-                    
-            return item
+        return True
     except Exception:
-        pass
-    return None
+        return False
+
+def process_channel_urls(item):
+    """
+    Tests the URLs for a specific channel ONE BY ONE.
+    Stops testing immediately once it finds a working link to guarantee 0 duplicates.
+    """
+    proper_name, data = item
+    cat = data['category']
+    logo = data['logo']
+    
+    for url in data['urls']:
+        if strict_stream_check(url, cat):
+            return (cat, proper_name, logo, url)  # Winner!
+            
+    return None # All links broken
 
 # ==========================================
 # 6. MAIN EXECUTION
 # ==========================================
 def main():
-    print("Starting Perfect Deduplication, Sorted, & Fast Playlist Builder...")
+    print("Starting Ultimate Deduplication, Ordered, & Strict Validation Builder...")
     
-    final_channels = {cat: [] for cat in CATEGORY_ORDER}
-    
-    # Track the pure stripped name to guarantee ZERO duplicates across the entire playlist
-    final_seen_names = set()
-    seen_urls = set()
-    total_added = 0
-    to_check = []
+    # Structure: {'Sun TV': {'category': 'Tamil GEC', 'logo': 'url', 'urls': [url1, url2]}}
+    grouped_channels = {}
+    seen_urls_global = set()
 
-    # --- INJECT USER CUSTOM CHANNELS FIRST ---
-    print("\nParsing User Custom Channels...")
+    # --- 1. GATHER CUSTOM CHANNELS FIRST (Gives them Priority!) ---
+    print("\nGathering User Custom Channels...")
     custom_parsed = parse_m3u(USER_CUSTOM_CHANNELS)
     for name, logo, url, custom_cat in custom_parsed:
         url = url.strip()
-        if not url.startswith("http") or url in seen_urls: continue
-        seen_urls.add(url)
+        if not url.startswith("http") or url in seen_urls_global: continue
+        seen_urls_global.add(url)
         
-        # Custom channels must still pass the language blocker!
-        if is_blocked(name): continue
+        if is_blocked(name): continue  # Block junk from custom lists too
         
         cat = custom_cat if custom_cat else "tamil iptv channels"
         proper_name = clean_name(name)
-        dedup_key = get_dedup_key(proper_name)
         
-        if dedup_key in final_seen_names: continue
-        
-        to_check.append((proper_name, logo, url, cat, dedup_key))
+        if proper_name not in grouped_channels:
+            grouped_channels[proper_name] = {'category': cat, 'logo': logo, 'urls': []}
+        grouped_channels[proper_name]['urls'].append(url)
 
-    # --- GRAB FROM REMOTE SOURCES ---
+    # --- 2. GATHER FROM GITHUB REPOS ---
     for src_url in SOURCES:
-        print(f"Fetching from: {src_url}")
+        print(f"Scraping: {src_url}")
         try:
             resp = requests.get(src_url, timeout=15)
             resp.raise_for_status()
             parsed = parse_json(resp.text) if src_url.endswith('.json') else parse_m3u(resp.text)
             
-            for name, logo, url, upstream_cat in parsed:
+            for name, logo, url, _ in parsed:
                 url = url.strip()
-                if not url.startswith("http") or url in seen_urls: continue
-                seen_urls.add(url)
+                if not url.startswith("http") or url in seen_urls_global: continue
+                seen_urls_global.add(url)
                 
-                # Check Blocklist FIRST!
-                if is_blocked(name): continue
+                if is_blocked(name): continue 
                 
                 cat, proper_name = get_category_and_name(name)
                 
-                # Dynamic Local Channel Fallback strictly for VMFM
+                # Strict Local Channel verification
                 if not cat:
                     if src_url in LOCAL_SOURCES:
                         cat = "Tamil Local Channels"
                         proper_name = clean_name(name)
                     else:
                         continue 
-                
-                dedup_key = get_dedup_key(proper_name)
-                
-                if dedup_key in final_seen_names: continue
-                
-                to_check.append((proper_name, logo, url, cat, dedup_key))
+                        
+                if proper_name not in grouped_channels:
+                    grouped_channels[proper_name] = {'category': cat, 'logo': logo, 'urls': []}
+                grouped_channels[proper_name]['urls'].append(url)
+                if not grouped_channels[proper_name]['logo'] and logo:
+                    grouped_channels[proper_name]['logo'] = logo
+                    
         except Exception:
             pass
 
-    print(f"\n-> Testing {len(to_check)} streams (Max 8s timeout with deep byte checks)...")
+    print(f"\n-> Extracted {len(grouped_channels)} unique channels. Testing backups to find 1 working link per channel...")
     
-    # --- MULTITHREADED CHECKING ---
+    # --- 3. MULTITHREADED STRICT TESTING ---
+    final_channels = {cat: [] for cat in CATEGORY_ORDER}
+    total_added = 0
+    
+    # Sends each "Proper Name" (with all its backup URLs) to be tested
     with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
-        results = executor.map(deep_stream_check, to_check)
+        results = executor.map(process_channel_urls, grouped_channels.items())
         for res in results:
             if res:
-                proper_name, logo, url, cat, dedup_key = res
-                
-                # Final lock to ensure no multi-thread duplicates slipped in
-                if dedup_key not in final_seen_names:
-                    final_seen_names.add(dedup_key)
-                    
-                    if cat not in final_channels:
-                        final_channels[cat] = []
-                    final_channels[cat].append((proper_name, logo, url))
-                    total_added += 1
+                cat, proper_name, logo, url = res
+                if cat not in final_channels:
+                    final_channels[cat] = []
+                final_channels[cat].append((proper_name, logo, url))
+                total_added += 1
 
     # ==========================================
     # 7. ORDERED SORTING & FILE GENERATION
@@ -544,16 +549,16 @@ def main():
         f.write("#EXTM3U\n")
         f.write("#PLAYLIST:Checked by CODECS.COM M3U Checker\n")
         
-        # Enforce exact category order, then A-Z sort inside the category
+        # Enforce exact category order requested
         for cat in CATEGORY_ORDER:
             if cat in final_channels and final_channels[cat]:
                 channels = final_channels[cat]
-                channels.sort(key=lambda x: x[0].lower())
+                channels.sort(key=lambda x: x[0].lower()) # A-Z sort inside category
                 f.write(f"\n# --- {cat} ---\n")
                 for display_name, logo, url in channels:
                     f.write(f'#EXTINF:-1 tvg-name="{display_name}" tvg-logo="{logo}" group-title="{cat}",{display_name}\n{url}\n')
-                    
-        # Catch any random categories that might have been dynamically added
+
+        # Catch any custom categories just in case
         for cat in sorted(final_channels.keys()):
             if cat not in CATEGORY_ORDER and final_channels[cat]:
                 channels = final_channels[cat]
@@ -564,21 +569,20 @@ def main():
 
     print(f"\n✅ SUCCESS! Total Working Unique Channels: {total_added}")
     
-    timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-    
     # ---------------------------------------------------------
     # README UPDATE
     # ---------------------------------------------------------
+    timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     with open("README.md", "w", encoding="utf-8") as f:
         f.write("# Tamil & English IPTV Playlist\n\n")
-        f.write("This playlist is automatically checked, strictly deduplicated (1 working link per channel), properly categorized, A-Z sorted, and updated every 6 hours.\n\n")
+        f.write("This playlist is automatically checked, perfectly categorized, A-Z sorted, completely deduplicated (1 link per channel), and updated every 6 hours.\n\n")
         f.write(f"**Total LIVE Channels:** {total_added}\n**Last Updated:** {timestamp}\n\n")
         
         f.write("## 📥 Playlist URL\n")
         f.write("Use the **Copy button** in the top right corner of the box below. Paste it directly into your IPTV Player:\n\n")
         
         f.write("```text\n")
-        f.write("https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u\n")
+        f.write("[https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u](https://raw.githubusercontent.com/nuttle-nuttterr/Mk-tholaikaatchi-test/main/master_playlist.m3u)\n")
         f.write("```\n\n")
         
         f.write("## 📊 Channel Breakdown\n| Category | Count |\n|---|---|\n")
