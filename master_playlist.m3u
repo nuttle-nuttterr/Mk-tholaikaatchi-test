@@ -99,9 +99,9 @@ https://jmp2.uk/plu-5f4d86f519358a00072b978e.m3u8
 #EXTINF:-1 tvg-name="India Today" tvg-logo="https://akamaividz2.zee5.com/image/upload/w_auto,h_396,c_scale,f_webp,q_auto:eco/resources/0-101-10z5588214/list/1170x658withlogofbf8f188fa714b538ff5dd8cb80e3bb5.jpg" group-title="English National News",India Today
 https://livehub-voidnet.onrender.com/cluster/streamcore/in/INDIATODAY_StreamOrchestrator.m3u8
 #EXTINF:-1 tvg-name="Mirror Now" tvg-logo="https://jiotv.catchup.cdn.jio.com/dare_images/images/Mirror_Now.png" group-title="English National News",Mirror Now
-https://d1rc86nwwc9fag.cloudfront.net/v1/vglive-sk-310426/main.m3u8?hdnts=st=1790111167~exp=1790132767~acl=!*/v1/vglive-sk-310426/*!/payload/yupptvott_5_-1_3b6f5839-0b53-aa06-7a80-023047a6357c_US_57.154.3.145_yuppfast_2_channel_213_-1/*~data=yupptvott_5_-1_3b6f5839-0b53-aa06-7a80-023047a6357c_US_57.154.3.145_yuppfast_2_channel_213_-1~hmac=d1429e9149701ca04a573a67938b7debe1ff9c238244c69ec94f64c8e7730182&ads.network_name=yuppfast&ads.app_store_url=&ads.app_bundle=&ads.content_livestream=1&ads.content_genre=NEWS&ads.channel_name=MirrorNow&ads.language=ENG&ads.user=0
+https://d1rc86nwwc9fag.cloudfront.net/v1/vglive-sk-310426/main.m3u8?hdnts=st=1790120659~exp=1790142259~acl=!*/v1/vglive-sk-310426/*!/payload/yupptvott_5_-1_3b6f5839-0b53-aa06-7a80-023047a6357c_US_48.217.54.80_yuppfast_2_channel_213_-1/*~data=yupptvott_5_-1_3b6f5839-0b53-aa06-7a80-023047a6357c_US_48.217.54.80_yuppfast_2_channel_213_-1~hmac=e4df8cd876b4e29d92a1e633bb37115e900188416b836f6e8bc595d54f640b62&ads.network_name=yuppfast&ads.app_store_url=&ads.app_bundle=&ads.content_livestream=1&ads.content_genre=NEWS&ads.channel_name=MirrorNow&ads.language=ENG&ads.user=0
 #EXTINF:-1 tvg-name="NDTV 24x7" tvg-logo="https://jiotv.catchup.cdn.jio.com/dare_images/images/NDTV_24x7.png" group-title="English National News",NDTV 24x7
-https://d1rc86nwwc9fag.cloudfront.net/vglive-sk-227286/v1/0194a671d8dd1ebd416a3e0a8a4524/0194a67abb941ebd47043cd206ba4f/main.m3u8?hdnts=st=1790111166~exp=1790132766~acl=!*/vglive-sk-227286/v1/0194a671d8dd1ebd416a3e0a8a4524/0194a67abb941ebd47043cd206ba4f/*!/payload/yupptvott_5_-1_3b6f5839-0b53-aa06-7a80-023047a6357c_US_57.154.3.145_yuppfast_2_channel_1_-1/*~data=yupptvott_5_-1_3b6f5839-0b53-aa06-7a80-023047a6357c_US_57.154.3.145_yuppfast_2_channel_1_-1~hmac=017871ca19e010bb2e4401d0c2e2c0adb42242075506b971c028b5114da06a51&ads.network_name=yuppfast&ads.app_store_url=&ads.app_bundle=&ads.content_livestream=1&ads.content_genre=NEWS&ads.channel_name=NDTV24x7&ads.language=ENG&ads.user=0
+https://d1rc86nwwc9fag.cloudfront.net/vglive-sk-227286/v1/0194a671d8dd1ebd416a3e0a8a4524/0194a67abb941ebd47043cd206ba4f/main.m3u8?hdnts=st=1790120659~exp=1790142259~acl=!*/vglive-sk-227286/v1/0194a671d8dd1ebd416a3e0a8a4524/0194a67abb941ebd47043cd206ba4f/*!/payload/yupptvott_5_-1_3b6f5839-0b53-aa06-7a80-023047a6357c_US_48.217.54.80_yuppfast_2_channel_1_-1/*~data=yupptvott_5_-1_3b6f5839-0b53-aa06-7a80-023047a6357c_US_48.217.54.80_yuppfast_2_channel_1_-1~hmac=95922df150ad7f43a0323ec03596e3a1fdcdd339f729b25e6a8a2e0c5bc1082e&ads.network_name=yuppfast&ads.app_store_url=&ads.app_bundle=&ads.content_livestream=1&ads.content_genre=NEWS&ads.channel_name=NDTV24x7&ads.language=ENG&ads.user=0
 #EXTINF:-1 tvg-name="Republic TV" tvg-logo="https://jiotv.catchup.cdn.jio.com/dare_images/images/Republic_TV.png" group-title="English National News",Republic TV
 https://cdn.pishow.tv/ott/live/271/master.m3u8
 #EXTINF:-1 tvg-name="Times Now" tvg-logo="https://jiotv.catchup.cdn.jio.com/dare_images/images/Times_Now_Navbharat.png" group-title="English National News",Times Now
@@ -172,8 +172,6 @@ https://play.applelive.in/jcvtv/jcvtv.m3u8
 https://play.applelive.in/jeysontv/jeysontv.m3u8
 #EXTINF:-1 tvg-name="JJ Max" tvg-logo="" group-title="local channels",JJ Max
 https://play.applelive.in/jjmax/jjmax.m3u8
-#EXTINF:-1 tvg-name="King TV" tvg-logo="https://yettelevision.com/assets/images/logo/channel_11865.png" group-title="local channels",King TV
-https://rtmp.bmlive.net/kingtv/kingtv/stream.m3u8
 #EXTINF:-1 tvg-name="NTV" tvg-logo="" group-title="local channels",NTV
 https://galaxyott.live/hls/ntv.m3u8
 #EXTINF:-1 tvg-name="Oscar TV" tvg-logo="" group-title="local channels",Oscar TV
@@ -198,8 +196,6 @@ https://hls.thendraltv.in/thendraltv_1210b43d/index.m3u8
 https://play.applelive.in/vasanthtv/vasanthtv.m3u8
 #EXTINF:-1 tvg-name="Vidyal TV" tvg-logo="" group-title="local channels",Vidyal TV
 https://account11.livebox.co.in/vidyaltvhls/live.m3u8?psk=stream
-#EXTINF:-1 tvg-name="Yet TV" tvg-logo="" group-title="local channels",Yet TV
-https://live.yettelevision.com:5443/LiveApp/streams/yettv.m3u8
 
 # --- Tamil Local Channels ---
 #EXTINF:-1 tvg-name="111 acp tv madurai" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1746108596_ACP%20TV%20LOGO%2026-Mar-2025%2014-57-40%20(2)-1.png" group-title="Tamil Local Channels",111 acp tv madurai
@@ -222,10 +218,10 @@ https://rtmp.bmlive.net/bms/kctv/index.m3u8
 http://srnet.bmlive.net:1935/srmusic/myStream/playlist.m3u8
 #EXTINF:-1 tvg-name="202 ISAI SARAL" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1786437968_1773995237_WhatsApp%20Image%202026-03-20%20at%201.47.36%20PM-Photoroom.png" group-title="Tamil Local Channels",202 ISAI SARAL
 http://srnet.bmlive.net:1935/isaisaral/mystream/playlist.m3u8
-#EXTINF:-1 tvg-name="233 garudan tv" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1787643805_garudan%20tv.png" group-title="Tamil Local Channels",233 garudan tv
-http://play.applelive.in/hls/garudantv.m3u8
 #EXTINF:-1 tvg-name="240 VDS TV" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1787038089_WhatsApp%20Image%202026-08-17%20at%207.49.21%20PM.jpeg" group-title="Tamil Local Channels",240 VDS TV
 http://117.247.192.123:8080/vds/vds.m3u8
+#EXTINF:-1 tvg-name="288 Coimbatore" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1733334938_IMG-20241204-WA0141.jpg" group-title="Tamil Local Channels",288 Coimbatore
+http://brightmeltech.in/kchannel/kchannel.m3u8
 #EXTINF:-1 tvg-name="3 CRAYONZ TV" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1775814267_CRAYONZ%20TV%20LOGO%20NEW(2).png" group-title="Tamil Local Channels",3 CRAYONZ TV
 http://sanplayout.xyz/live2/crayonztv/index.m3u8
 #EXTINF:-1 tvg-name="317 Koickal News" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1752312590_Koickal%20Tv%20Kerala%20News.png" group-title="Tamil Local Channels",317 Koickal News
@@ -290,12 +286,14 @@ http://arulstream.in:1935/ArulTv/live/playlist.m3u8
 https://play.applelive.in/atn/atn.m3u8
 #EXTINF:-1 tvg-name="AVS TV" tvg-logo="https://i.ibb.co/FLp5TnL1/AVS.jpg" group-title="Tamil Local Channels",AVS TV
 https://play.applelive.in/avstv/avstv.m3u8
+#EXTINF:-1 tvg-name="Ayya TV" tvg-logo="https://tamiltvchannels.com/img/Devotional%20H/ayya%20logo.png" group-title="Tamil Local Channels",Ayya TV
+https://play.applelive.in/ayyatv/ayyatv.m3u8
+#EXTINF:-1 tvg-name="Ayya Vaikuntar TV" tvg-logo="https://raw.githubusercontent.com/amazeyourself/tamil-local-iptv/refs/heads/main/logos/AyyaVaikundarTV.png" group-title="Tamil Local Channels",Ayya Vaikuntar TV
+https://server.sscloud7.in/live/ayyatv/index.mpd
 #EXTINF:-1 tvg-name="Bhagyam TV HD" tvg-logo="https://phoenixcreations.online/ott/jayamott/uploads/1777037057_Timeline 1_00180000.png" group-title="Tamil Local Channels",Bhagyam TV HD
 http://27.116.22.53:5001/live/3358.m3u8
 #EXTINF:-1 tvg-name="Bible TV" tvg-logo="http://phoenixcreations.online/ott/joshuaott/uploads/1762166129_BibleTV.png" group-title="Tamil Local Channels",Bible TV
 https://account33.livebox.co.in/bibletvhls/live.m3u8
-#EXTINF:-1 tvg-name="Blue Moon TV" tvg-logo="https://raw.githubusercontent.com/amazeyourself/tamil-local-iptv/refs/heads/main/logos/BMTV.png" group-title="Tamil Local Channels",Blue Moon TV
-https://rtmp.bmlive.net/bms/bmtv/stream.m3u8
 #EXTINF:-1 tvg-name="Channel 316" tvg-logo="https://phoenixcreations.online/ott/joshuaott/uploads/1761713549_316%20tv.png" group-title="Tamil Local Channels",Channel 316
 https://channel316.livebox.co.in/c316hls/live.m3u8
 #EXTINF:-1 tvg-name="Channel Spice" tvg-logo="https://raw.githubusercontent.com/amazeyourself/tamil-local-iptv/refs/heads/main/logos/ChannelSpice.png" group-title="Tamil Local Channels",Channel Spice
@@ -354,6 +352,8 @@ http://api.toonamiaftermath.com:3000/movies/playlist.m3u8
 https://sanplayout.xyz/live2/idhayamkidz/index.m3u8
 #EXTINF:-1 tvg-name="Idhayam TV" tvg-logo="http://phoenixcreations.online/ott/jayamott/uploads/1778983521_WhatsApp%20Image%202026-05-17%20at%207.34.56%20AM.jpeg" group-title="Tamil Local Channels",Idhayam TV
 https://sanplayout.xyz/live2/idhayamtv/index.m3u8
+#EXTINF:-1 tvg-name="Imai TV" tvg-logo="https://i.imgur.com/9tODclu.png" group-title="Tamil Local Channels",Imai TV
+https://live20.bozztv.com/akamaissh101/ssh101/imaitv/playlist.m3u8
 #EXTINF:-1 tvg-name="Isai Saral" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1786437968_1773995237_WhatsApp%20Image%202026-03-20%20at%201.47.36%20PM-Photoroom.png" group-title="Tamil Local Channels",Isai Saral
 https://srnet-bmlive-net.proxy.nellaiiptv.com/isaisaral/mystream/playlist.m3u8
 #EXTINF:-1 tvg-name="Islamic Channel" tvg-logo="https://play-lh.googleusercontent.com/O1pprcPKyDJ95KLGDKyVtcoLrSgAeX0-STgyaYAWYEwBAiReAhxhE2asi4HXP2cplqM" group-title="Tamil Local Channels",Islamic Channel
@@ -390,6 +390,8 @@ https://stream6.livebox.co.in/manasutvhls/live.m3u8
 https://play.applelive.in/mariyaannaitv/mariyaannaitv.m3u8
 #EXTINF:-1 tvg-name="Mariya Matha TV" tvg-logo="https://tamiltvchannels.com/img/devotional/mariyamatha%20TV.png" group-title="Tamil Local Channels",Mariya Matha TV
 https://play.applelive.in/mariyamathatv/mariyamathatv.m3u8
+#EXTINF:-1 tvg-name="Mathan TV" tvg-logo="https://raw.githubusercontent.com/amazeyourself/tamil-local-iptv/refs/heads/main/logos/MathanTV.png" group-title="Tamil Local Channels",Mathan TV
+https://ipcloud.live/mathantv/mathantv/index.mpd
 #EXTINF:-1 tvg-name="Mayil TV" tvg-logo="https://phoenixcreations.online/ott/vinayagaott/uploads/1782824649_mayil%20tv%20logo%20ip%20tv%20copy.jpg" group-title="Tamil Local Channels",Mayil TV
 http://103.186.231.25:8080/hls/mayiltv/index.m3u8
 #EXTINF:-1 tvg-name="MDN TV" tvg-logo="https://raw.githubusercontent.com/amazeyourself/tamil-local-iptv/refs/heads/main/logos/MDNTV.png" group-title="Tamil Local Channels",MDN TV
@@ -412,6 +414,10 @@ https://live1.sscloud7.com/live/omsakthitv/index.mpd
 http://omtv.7starcloud.com:1935/omtv/live/live.m3u8
 #EXTINF:-1 tvg-name="Params TV" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1732631200_params%20tv%20png%20lgog%20.png" group-title="Tamil Local Channels",Params TV
 http://shreeparams.7starcloud.com:1935/live/paramstv/live.m3u8
+#EXTINF:-1 tvg-name="PCN Channel" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1769084640_new%20pcn%20logo.psd%20-%20PNG%2000%20(2).png" group-title="Tamil Local Channels",PCN Channel
+https://pcntv.wmsdigital.in/hls/gtv/stream.m3u8
+#EXTINF:-1 tvg-name="Peniel Church TV" tvg-logo="https://play-lh.googleusercontent.com/nGUr3mUAO4e7D2vhu9qgfQYUHSttDW_WoYXyqbQ3njxq0XILcNhkcHXXNt0LPv1FvrY" group-title="Tamil Local Channels",Peniel Church TV
+http://indiamatrix.in/penieltv/penieltv.m3u8
 #EXTINF:-1 tvg-name="Polimer Channel" tvg-logo="https://play-lh.googleusercontent.com/DiZsLeRIoky2i4qkkR36SF7R5MR_fwb0Hl41U3wAlVZsi1wKMBxbK3fzvln8YUQrmbkV" group-title="Tamil Local Channels",Polimer Channel
 http://polimer.7starcloud.com:1935/polimer/live/live.m3u8
 #EXTINF:-1 tvg-name="Power Of Prayer TV" tvg-logo="https://play-lh.googleusercontent.com/95zEHpwwpIjcUc6jPO1Fm5tPaNCdbBiluf4WD9q9AybB0n7O3mOy8mgbPAFZfcOgpUZWIO-xS14vwUiDF3rBwg" group-title="Tamil Local Channels",Power Of Prayer TV
@@ -434,8 +440,6 @@ https://play.applelive.in/royaltv/royaltv.m3u8
 http://ptuf.ridsys.in/riptv/live/S_MEDIA/index.m3u8
 #EXTINF:-1 tvg-name="S TV" tvg-logo="https://raw.githubusercontent.com/amazeyourself/tamil-local-iptv/refs/heads/main/logos/STV.png" group-title="Tamil Local Channels",S TV
 https://apis.avmediawork.in/tvhls/stv.m3u8
-#EXTINF:-1 tvg-name="Sai TV Madurai" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1739599891_logo-removebg-preview.png" group-title="Tamil Local Channels",Sai TV Madurai
-https://stream.onecloudlive.in/saitvmdu/saitvmdu/index.mpd
 #EXTINF:-1 tvg-name="Salvation TV" tvg-logo="https://salvationtv.in/wp-content/themes/twentythirteen/images/logo.png" group-title="Tamil Local Channels",Salvation TV
 https://ktismaservers.in:3902/live/salvationtvlive.m3u8
 #EXTINF:-1 tvg-name="Samugam Media" tvg-logo="https://yt3.googleusercontent.com/ytc/AIdro_meX_j-Fg6LcfbwLBDI8X1BlC3q_nD1Io5wVWriMgWVJA" group-title="Tamil Local Channels",Samugam Media
@@ -498,8 +502,6 @@ https://kali.vdopanel.com:3169/stream/play.m3u8
 http://cdn.utvtamil.in/utvkovai/utv/playlist.m3u8
 #EXTINF:-1 tvg-name="Vaanam TV" tvg-logo="https://yettelevision.com/assets/images/logo/channel_11897.png" group-title="Tamil Local Channels",Vaanam TV
 https://lanka.vaanam24.com:3712/hybrid/play.m3u8
-#EXTINF:-1 tvg-name="Vanavil TV" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1738324014_vanavil%20w%20stroke%20copy.png" group-title="Tamil Local Channels",Vanavil TV
-https://ktismaservers.in:3879/live/vanaviltvlive.m3u8
 #EXTINF:-1 tvg-name="VDS TV" tvg-logo="https://livetv.ashokadigital.net/upload/logo/1787038089_WhatsApp%20Image%202026-08-17%20at%207.49.21%20PM.jpeg" group-title="Tamil Local Channels",VDS TV
 http://117.247.192.123:8080/vds/vds.m3u8?psk=123456
 #EXTINF:-1 tvg-name="Vinmeen Music" tvg-logo="https://tamiltvchannels.com/img/devotional/Vinmeen%20Music.png" group-title="Tamil Local Channels",Vinmeen Music
@@ -508,8 +510,6 @@ https://vinmeentv.livebox.co.in/vinmeentvhls/live.m3u8
 https://rtmp.bmlive.net/webaduga/webaduga/index.m3u8
 #EXTINF:-1 tvg-name="Win Vision TV" tvg-logo="https://play-lh.googleusercontent.com/oLcWvLk_AuYS4gi-Qd6uJI70hE8uoCAR6_SitwLQWZpzy9NBvmaMBqo9uR7hPRwZ3RY" group-title="Tamil Local Channels",Win Vision TV
 https://play.applelive.in/winvisiontv/winvisiontv.m3u8
-#EXTINF:-1 tvg-name="YET Max" tvg-logo="https://yettelevision.com/assets/images/logo/channel_11847.png" group-title="Tamil Local Channels",YET Max
-https://live.yettelevision.com:5443/LiveApp/streams/yettv2.m3u8
 
 # --- tamil iptv channels ---
 #EXTINF:-1 tvg-name="dd tamil" tvg-logo="" group-title="tamil iptv channels",dd tamil
