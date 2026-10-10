@@ -3,7 +3,7 @@
 This playlist is automatically checked, perfectly categorized, A-Z sorted, completely deduplicated (1 link per channel), and updated every 6 hours.
 
 **Total LIVE Channels:** 192
-**Last Updated:** 2026-10-10 20:49:06 UTC
+**Last Updated:** 2026-10-10 23:57:11 UTC
 
 ## 📥 Playlist URL
 Use the **Copy button** in the top right corner of the box below. Paste it directly into your IPTV Player:
