@@ -2,8 +2,8 @@
 
 This playlist is automatically checked, perfectly categorized, A-Z sorted, completely deduplicated (1 link per channel), and updated every 6 hours.
 
-**Total LIVE Channels:** 196
-**Last Updated:** 2026-10-23 08:02:55 UTC
+**Total LIVE Channels:** 225
+**Last Updated:** 2026-10-23 13:55:09 UTC
 
 ## 📥 Playlist URL
 Use the **Copy button** in the top right corner of the box below. Paste it directly into your IPTV Player:
@@ -15,20 +15,23 @@ Use the **Copy button** in the top right corner of the box below. Paste it direc
 ## 📊 Channel Breakdown
 | Category | Count |
 |---|---|
-| Tamil GEC | 5 |
-| Tamil Movies | 2 |
-| Tamil News | 4 |
-| Tamil Music | 1 |
-| Tamil Spiritual | 6 |
+| Tamil GEC | 8 |
+| Tamil Movies | 3 |
+| Tamil News | 10 |
+| Tamil Comedy | 1 |
+| Tamil Music | 3 |
+| Tamil Infotainment | 2 |
+| Tamil Spiritual | 7 |
+| Tamil Kids | 7 |
 | English GEC | 3 |
 | English Movies | 4 |
-| English National News | 6 |
+| English National News | 8 |
 | English International News | 3 |
-| English Business News | 1 |
-| English Infotainment | 4 |
+| English Business News | 3 |
+| English Infotainment | 5 |
 | English Lifestyle | 3 |
-| English Kids | 6 |
+| English Kids | 7 |
 | Sports | 7 |
-| local channels | 7 |
-| Tamil Local Channels | 122 |
+| local channels | 10 |
+| Tamil Local Channels | 119 |
 | tamil iptv channels | 12 |
