@@ -2,8 +2,8 @@
 
 This playlist is automatically checked, perfectly categorized, A-Z sorted, completely deduplicated (1 link per channel), and updated every 6 hours.
 
-**Total LIVE Channels:** 195
-**Last Updated:** 2026-11-06 01:16:10 UTC
+**Total LIVE Channels:** 194
+**Last Updated:** 2026-11-06 10:04:00 UTC
 
 ## 📥 Playlist URL
 Use the **Copy button** in the top right corner of the box below. Paste it directly into your IPTV Player:
@@ -30,5 +30,5 @@ Use the **Copy button** in the top right corner of the box below. Paste it direc
 | English Kids | 4 |
 | Sports | 1 |
 | local channels | 9 |
-| Tamil Local Channels | 132 |
+| Tamil Local Channels | 131 |
 | tamil iptv channels | 12 |
